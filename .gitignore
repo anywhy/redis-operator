@@ -5,6 +5,22 @@
 *.so
 *.dylib
 
+bin/
+images/redis-operator/bin/
+
+*.tar
+tmp/
+data/
+.idea
+.vscode
+
+# ginkgo test coverage
+*.coverprofile
+
+# retool. We could check this in like a vendor
+# But it is just tools that can be installed with make setup
+/_tools/
+
 # Test binary, build with `go test -c`
 *.test
 
