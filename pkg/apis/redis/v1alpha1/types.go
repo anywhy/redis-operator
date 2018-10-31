@@ -34,6 +34,7 @@ type RedisList struct {
 // RedisClusterSpec redis cluster attributes
 type RedisClusterSpec struct {
 	ContainerSpec
+	// Mode choose from /MS/CLUSTER
 	Mode                 string              `json:"mode"`
 	Replicas             int32               `json:"replicas"`
 	NodeSelector         map[string]string   `json:"nodeSelector,omitempty"`
