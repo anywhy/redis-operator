@@ -5,6 +5,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// ClusterMode describes a redis cluster mode
+type ClusterMode string
+
+const (
+	// MS means that redis cluster is master/slave
+	MS ClusterMode = "MS"
+	// Cluster means redis cluster is shard mode
+	Cluster ClusterMode = "CLUSTER"
+)
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -34,25 +44,28 @@ type RedisList struct {
 // RedisClusterSpec redis cluster attributes
 type RedisClusterSpec struct {
 	ContainerSpec
-	// Mode choose from /MS/CLUSTER
-	Mode                 string              `json:"mode"`
-	Replicas             int32               `json:"replicas"`
-	NodeSelector         map[string]string   `json:"nodeSelector,omitempty"`
-	NodeSelectorRequired bool                `json:"nodeSelectorRequired,omitempty"`
-	StorageClassName     string              `json:"storageClassName,omitempty"`
-	Tolerations          []corev1.Toleration `json:"tolerations,omitempty"`
 
-	Sentinel RedisSentinelSpec `json:"sentinel,omitempty"`
+	// Mode choose from /MS/CLUSTER
+	Mode ClusterMode `json:"mode"`
+	// The number of cluster members (masters)
+	Members int32 `json:"members"`
+	// The number of replicas for each master(redis cluster mode)
+	ReplicationFactor *int32              `json:"replicationFactor,omitempty"`
+	NodeSelector      map[string]string   `json:"nodeSelector,omitempty"`
+	StorageClassName  string              `json:"storageClassName,omitempty"`
+	Tolerations       []corev1.Toleration `json:"tolerations,omitempty"`
+
+	Sentinels RedisSentinelSpec `json:"sentinels,omitempty"`
 }
 
 // RedisSentinelSpec redis sentinel attributes
 type RedisSentinelSpec struct {
 	ContainerSpec
-	Replicas             int32               `json:"replicas"`
-	NodeSelector         map[string]string   `json:"nodeSelector,omitempty"`
-	NodeSelectorRequired bool                `json:"nodeSelectorRequired,omitempty"`
-	StorageClassName     string              `json:"storageClassName,omitempty"`
-	Tolerations          []corev1.Toleration `json:"tolerations,omitempty"`
+	Replicas         int32               `json:"replicas"`
+	Quorum           int32               `json:"quorum"`
+	NodeSelector     map[string]string   `json:"nodeSelector,omitempty"`
+	StorageClassName string              `json:"storageClassName,omitempty"`
+	Tolerations      []corev1.Toleration `json:"tolerations,omitempty"`
 }
 
 // RedisClusterStatus represents the current status of a redis cluster.
