@@ -21,6 +21,7 @@ func PrintVersionInfo() {
 
 // LogVersionInfo print version info to log
 func LogVersionInfo() {
+	glog.Infof("Welcome to Redis Operator.")
 	glog.Infof("Git Commit Hash: %s", GitCommit)
 	glog.Infof("Build Date: %s", BuildDate)
 }
