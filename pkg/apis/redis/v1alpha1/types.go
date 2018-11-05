@@ -54,6 +54,7 @@ type RedisClusterSpec struct {
 	NodeSelector      map[string]string   `json:"nodeSelector,omitempty"`
 	StorageClassName  string              `json:"storageClassName,omitempty"`
 	Tolerations       []corev1.Toleration `json:"tolerations,omitempty"`
+	SchedulerName     string              `json:"schedulerName,omitempty"`
 
 	Sentinels RedisSentinelSpec `json:"sentinels,omitempty"`
 }

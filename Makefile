@@ -10,4 +10,4 @@ default: build
 build: controller-manager
 
 controller-manager:
-	$(GO) build -ldflags '$(LDFLAGS)' -o images/redis-operator/bin/redis-controller-manager cmd/controller-manager/main.go
+	$(GO) build -ldflags '$(LDFLAGS)' -o images/redis-operator/bin/redis-controller-manager cmd/controller-manager/controller-manager.go
