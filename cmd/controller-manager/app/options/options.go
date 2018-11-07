@@ -10,10 +10,13 @@ import (
 
 // RedisControllerManagerOptions redis controller options
 type RedisControllerManagerOptions struct {
+	Master     string
 	Kubeconfig string
 
-	PrintVersion bool
-	Workers      int
+	Namespace string
+
+	// PrintVersion bool
+	Workers int
 
 	// ConfigFile is the location of the scheduler server's configuration file.
 	ConfigFile string
@@ -39,8 +42,10 @@ func NewRedisControllerManagerOptions() *RedisControllerManagerOptions {
 
 // AddFlags add operator options flags
 func (s *RedisControllerManagerOptions) AddFlags(pflag *pflag.FlagSet) {
+	pflag.StringVar(&s.Master, "master", s.Master, "k8s master addr")
 	pflag.StringVar(&s.ConfigFile, "config", s.ConfigFile, "The path to the configuration file. Flags override values in this file.")
-	pflag.BoolVar(&s.PrintVersion, "version", false, "Show version and quit")
+	// pflag.BoolVar(&s.PrintVersion, "version", false, "Show version and quit")
+	pflag.StringVar(&s.Namespace, "namespace", s.Namespace, "The Operator deployment of k8s namespce")
 	pflag.StringVar(&s.Kubeconfig, "kubeconfig", "", "Config k8s config file path")
 	pflag.IntVar(&s.Workers, "workers", s.Workers, "start by threads number for worker")
 	pflag.StringVar(&controller.DefaultStorageClassName, "default-storage-class-name", "standard", "Default storage class name")
