@@ -3,7 +3,9 @@ package controller
 import (
 	"fmt"
 
+	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	extv1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/anywhy/redis-operator/pkg/apis/redis/v1alpha1"
@@ -29,6 +31,32 @@ func newService(rc *v1alpha1.RedisCluster, _ string) *corev1.Service {
 		},
 	}
 	return svc
+}
+
+func newDeployment(rc *v1alpha1.RedisCluster, name string) *extv1.Deployment {
+	dep := &extv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      GetName(rc.Name, name),
+			Namespace: metav1.NamespaceDefault,
+			OwnerReferences: []metav1.OwnerReference{
+				GetOwnerRef(rc),
+			},
+		},
+	}
+	return dep
+}
+
+func newStatefulSet(rc *v1alpha1.RedisCluster, name string) *apps.StatefulSet {
+	set := &apps.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      GetName(rc.Name, name),
+			Namespace: metav1.NamespaceDefault,
+			OwnerReferences: []metav1.OwnerReference{
+				GetOwnerRef(rc),
+			},
+		},
+	}
+	return set
 }
 
 func collectEvents(source <-chan string) []string {

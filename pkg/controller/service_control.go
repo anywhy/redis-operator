@@ -40,6 +40,7 @@ func NewRealServiceControl(kubeCli kubernetes.Interface, svcLister corelisters.S
 	}
 }
 
+// CreateService create a Service in a RedisCluster.
 func (sc *realServiceControl) CreateService(rc *v1alpha1.RedisCluster, svc *corev1.Service) error {
 	rcSvc, err := sc.kubeCli.CoreV1().Services(rc.Namespace).Create(svc)
 	if apierrors.IsAlreadyExists(err) {
@@ -53,6 +54,7 @@ func (sc *realServiceControl) CreateService(rc *v1alpha1.RedisCluster, svc *core
 	return err
 }
 
+// UpdateService update a Service in a RedisCluster.
 func (sc *realServiceControl) UpdateService(rc *v1alpha1.RedisCluster, svc *corev1.Service) (*corev1.Service, error) {
 	ns := rc.GetNamespace()
 	rcName := rc.GetName()
@@ -81,12 +83,15 @@ func (sc *realServiceControl) UpdateService(rc *v1alpha1.RedisCluster, svc *core
 	return updateSvc, err
 }
 
+// DeleteService delete a Service in a RedisCluster.
 func (sc *realServiceControl) DeleteService(rc *v1alpha1.RedisCluster, svc *corev1.Service) error {
 	err := sc.kubeCli.CoreV1().Services(rc.Namespace).Delete(svc.Name, nil)
 	sc.recordServiceEvent("delete", rc, svc, err)
 	return err
 }
 
+// recordServiceEvent records an event for verb applied to a service in a RedisCluster. If err is nil the generated event will
+// have a reason of v1.EventTypeNormal. If err is not nil the generated event will have a reason of v1.EventTypeWarning.
 func (sc *realServiceControl) recordServiceEvent(verb string, rc *v1alpha1.RedisCluster, svc *corev1.Service, err error) {
 	rcName := rc.Name
 	svcName := svc.Name

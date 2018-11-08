@@ -9,7 +9,9 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	core "k8s.io/client-go/testing"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 )
 
@@ -117,6 +119,42 @@ func TestServiceControlUpdateService(t *testing.T) {
 	g.Expect(err).To(Succeed())
 	g.Expect(updateSvc.Spec.ClusterIP).To(Equal("127.0.0.1"))
 	g.Expect(updateSvc.Spec.LoadBalancerIP).To(Equal("9.9.9.9"))
+
+	events := collectEvents(recorder.Events)
+	g.Expect(events).To(HaveLen(1))
+	g.Expect(events[0]).To(ContainSubstring(corev1.EventTypeNormal))
+}
+
+func TestServiceControlUpdateServiceConflictSuccess(t *testing.T) {
+	g := NewGomegaWithT(t)
+	recorder := record.NewFakeRecorder(10)
+
+	rc := newRedisCluster("redis-demo")
+	svc := newService(rc, "master")
+	svc.Spec.ClusterIP = "1.1.1.1"
+
+	fakeClient := &fake.Clientset{}
+	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+	oldSvc := newService(rc, "master")
+	oldSvc.Spec.ClusterIP = "2.2.2.2"
+
+	err := indexer.Add(oldSvc)
+	g.Expect(err).To(Succeed())
+
+	svcLister := corelisters.NewServiceLister(indexer)
+	control := NewRealServiceControl(fakeClient, svcLister, recorder)
+	conflict := false
+	fakeClient.AddReactor("update", "services", func(action core.Action) (bool, runtime.Object, error) {
+		update := action.(core.UpdateAction)
+		if !conflict {
+			conflict = true
+			return true, oldSvc, apierrors.NewConflict(action.GetResource().GroupResource(), svc.Name, errors.New("conflict"))
+		}
+		return true, update.GetObject(), nil
+	})
+	updateSvc, err := control.UpdateService(rc, svc)
+	g.Expect(err).To(Succeed())
+	g.Expect(updateSvc.Spec.ClusterIP).To(Equal("1.1.1.1"))
 
 	events := collectEvents(recorder.Events)
 	g.Expect(events).To(HaveLen(1))
