@@ -57,12 +57,12 @@ func TestServiceControlCreateDeploymentExitsNotConrollBySameCluster(t *testing.T
 	recorder := record.NewFakeRecorder(10)
 
 	rc := newRedisCluster("redis-demo")
-	dep := newDeployment(rc, "sentinel")
-	dep1 := newDeployment(rc, "sentinel1")
+	rc1 := newRedisCluster("redis-demo1")
 
-	dep.UID = "123"
-	dep1.UID = "abc"
+	rc.UID = "123"
+	rc1.UID = "abc"
 
+	dep := newDeployment(rc1, "sentinel")
 	fakeClient := &fake.Clientset{}
 	control := NewDeploymentControl(fakeClient, nil, recorder)
 	fakeClient.AddReactor("create", "deployments", func(action core.Action) (bool, runtime.Object, error) {
@@ -149,7 +149,7 @@ func TestServiceControlUpdateDeploymentConflictSuccess(t *testing.T) {
 	})
 	updateDep, err := control.UpdateDeployment(rc, dep)
 	g.Expect(err).To(Succeed())
-	g.Expect(updateDep.Spec.Paused).To(Equal(true))
+	g.Expect(updateDep.Spec.Paused).To(Equal(false))
 
 	events := collectEvents(recorder.Events)
 	g.Expect(events).To(HaveLen(1))
