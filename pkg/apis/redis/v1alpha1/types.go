@@ -18,8 +18,8 @@ const (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// Redis is a redis cluster control's spec
-type Redis struct {
+// RedisCluster is a redis cluster control's spec
+type RedisCluster struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -33,12 +33,12 @@ type Redis struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// RedisList is RedisCluster list
-type RedisList struct {
+// RedisClusterList is RedisCluster list
+type RedisClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 
-	Items []Redis `json:"items"`
+	Items []RedisCluster `json:"items"`
 }
 
 // RedisClusterSpec redis cluster attributes

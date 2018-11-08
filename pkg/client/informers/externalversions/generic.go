@@ -53,8 +53,8 @@ func (f *genericInformer) Lister() cache.GenericLister {
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
 	// Group=redis.anywhy.github, Version=v1alpha1
-	case v1alpha1.SchemeGroupVersion.WithResource("redises"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Redis().V1alpha1().Redises().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("redisclusters"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Redis().V1alpha1().RedisClusters().Informer()}, nil
 
 	}
 
