@@ -18,10 +18,10 @@ limitations under the License.
 
 package v1alpha1
 
-// RedisListerExpansion allows custom methods to be added to
-// RedisLister.
-type RedisListerExpansion interface{}
+// RedisClusterListerExpansion allows custom methods to be added to
+// RedisClusterLister.
+type RedisClusterListerExpansion interface{}
 
-// RedisNamespaceListerExpansion allows custom methods to be added to
-// RedisNamespaceLister.
-type RedisNamespaceListerExpansion interface{}
+// RedisClusterNamespaceListerExpansion allows custom methods to be added to
+// RedisClusterNamespaceLister.
+type RedisClusterNamespaceListerExpansion interface{}
