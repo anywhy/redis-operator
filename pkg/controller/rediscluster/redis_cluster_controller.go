@@ -37,7 +37,7 @@ type Controller struct {
 	control ControlInterface
 
 	// rcLister is able to list/get redisclusters from a shared informer's store
-	rcLister listers.RedisLister
+	rcLister listers.RedisClusterLister
 	// rcListerSynced returns true if the redisclusters shared informer has synced at least once
 	rcListerSynced cache.InformerSynced
 
@@ -137,7 +137,7 @@ func (rcc *Controller) sync(key string) error {
 	if err != nil {
 		return err
 	}
-	redi, err := rcc.rcLister.Redises(ns).Get(name)
+	rc, err := rcc.rcLister.RedisClusters(ns).Get(name)
 	if errors.IsNotFound(err) {
 		glog.Infof("RedisCluster has been deleted %v", key)
 		return nil
@@ -146,10 +146,10 @@ func (rcc *Controller) sync(key string) error {
 		return err
 	}
 
-	return rcc.syncRedisCluster(redi.DeepCopy())
+	return rcc.syncRedisCluster(rc.DeepCopy())
 }
 
-func (rcc *Controller) syncRedisCluster(redi *v1alpha1.Redis) error {
+func (rcc *Controller) syncRedisCluster(rc *v1alpha1.RedisCluster) error {
 	return nil
 }
 

@@ -47,6 +47,7 @@ func (sc *realServiceControl) CreateService(rc *v1alpha1.RedisCluster, svc *core
 			err := fmt.Errorf(MessageResourceExists, "Service", rcSvc.Namespace, rcSvc.Name)
 			sc.recordServiceEvent("create", rc, rcSvc, err)
 		}
+		return nil
 	}
 	sc.recordServiceEvent("create", rc, svc, err)
 	return err
@@ -101,3 +102,5 @@ func (sc *realServiceControl) recordServiceEvent(verb string, rc *v1alpha1.Redis
 		sc.recorder.Event(rc, corev1.EventTypeWarning, reason, msg)
 	}
 }
+
+var _ ServiceControlInterface = &realServiceControl{}

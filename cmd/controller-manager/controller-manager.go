@@ -25,6 +25,10 @@ func main() {
 	pflag.CommandLine.SetNormalizeFunc(utilflag.WordSepNormalizeFunc)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 
+	// Workaround for this issue:
+	// https://github.com/kubernetes/kubernetes/issues/17162
+	flag.CommandLine.Parse([]string{})
+
 	// utilflag.InitFlags()
 	logs.InitLogs()
 	defer logs.FlushLogs()
