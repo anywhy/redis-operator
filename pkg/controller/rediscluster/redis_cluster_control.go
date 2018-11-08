@@ -9,5 +9,5 @@ import (
 // Currently, there is only one implementation.
 type ControlInterface interface {
 	// UpdateRedisCluster implements the control logic for StatefulSet creation, update, and deletion
-	UpdateRedisCluster(*v1alpha1.Redis) error
+	UpdateRedisCluster(*v1alpha1.RedisCluster) error
 }

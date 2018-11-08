@@ -113,3 +113,5 @@ func (rpc *realPodControl) recordPodEvent(verb string, rc *v1alpha1.RedisCluster
 		rpc.recorder.Event(rc, corev1.EventTypeWarning, reason, message)
 	}
 }
+
+var _ PodControlInterface = &realPodControl{}
