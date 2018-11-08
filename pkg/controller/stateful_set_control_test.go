@@ -57,12 +57,11 @@ func TestServiceControlCreateStatefullSetExitsNotConrollBySameCluster(t *testing
 	recorder := record.NewFakeRecorder(10)
 
 	rc := newRedisCluster("redis-demo")
-	ss := newStatefulSet(rc, "group1")
-	ss1 := newStatefulSet(rc, "group2")
+	rc1 := newRedisCluster("redis-demo1")
 
-	ss.UID = "123"
-	ss1.UID = "abc"
-
+	rc.UID = "123"
+	rc1.UID = "abc"
+	ss := newStatefulSet(rc1, "group1")
 	fakeClient := &fake.Clientset{}
 	control := NewRealStatefuSetControl(fakeClient, nil, recorder)
 	fakeClient.AddReactor("create", "statefulsets", func(action core.Action) (bool, runtime.Object, error) {
