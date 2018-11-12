@@ -56,6 +56,10 @@ type RedisClusterSpec struct {
 	Tolerations       []corev1.Toleration `json:"tolerations,omitempty"`
 	SchedulerName     string              `json:"schedulerName,omitempty"`
 
+	// Services list non-headless services type used in RedisCluster
+	Services        []Service                            `json:"services,omitempty"`
+	PVReclaimPolicy corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
+
 	Sentinels RedisSentinelSpec `json:"sentinels,omitempty"`
 }
 
@@ -89,4 +93,10 @@ type ResourceRequirement struct {
 	Memory string `json:"memory,omitempty"`
 	// Storage is storage size a pod requires
 	Storage string `json:"storage,omitempty"`
+}
+
+// Service represent service type used in RedisCluster
+type Service struct {
+	Name string `json:"name,omitempty"`
+	Type string `json:"type,omitempty"`
 }
