@@ -4,6 +4,7 @@ GOTEST := CGO_ENABLED=0 go test -v -cover
 
 LDFLAGS += -X "github.com/anywhy/redis-operator/version.buildDate=$(shell date -u '+%Y-%m-%d %I:%M:%S')"
 LDFLAGS += -X "github.com/anywhy/redis-operator/version.gitCommit=$(shell git rev-parse HEAD)"
+LDFLAGS += -X "github.com/anywhy/redis-operator/version.gitVersion=$(shell git describe --tags --abbrev=14 `git rev-parse HEAD`^{commit})"
 
 default: build
 
