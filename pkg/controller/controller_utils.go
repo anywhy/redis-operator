@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"fmt"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/anywhy/redis-operator/pkg/apis/redis/v1alpha1"
@@ -30,5 +32,21 @@ func GetOwnerRef(rc *v1alpha1.RedisCluster) metav1.OwnerReference {
 		UID:                rc.GetUID(),
 		Controller:         &controller,
 		BlockOwnerDeletion: &blockOwnerDeletion,
+	}
+}
+
+// AnnProm adds annotations for prometheus scraping metrics
+func AnnProm(port int32) map[string]string {
+	return map[string]string{
+		"prometheus.io/scrape": "true",
+		"prometheus.io/path":   "/metrics",
+		"prometheus.io/port":   fmt.Sprintf("%d", port),
+	}
+}
+
+// setIfNotEmpty set the value into map when value in not empty
+func setIfNotEmpty(container map[string]string, key, value string) {
+	if value != "" {
+		container[key] = value
 	}
 }
