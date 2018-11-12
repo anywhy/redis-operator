@@ -9,8 +9,7 @@ import (
 
 // PrintVersionInfo print version info to standard output
 func PrintVersionInfo() {
-	fmt.Println("Git Commit Hash:", gitCommit)
-	fmt.Println("Build Date:", buildDate)
+	fmt.Printf("Redis-Operator Version: %#v", Get())
 }
 
 // LogVersionInfo print version info to log
