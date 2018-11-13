@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -49,4 +50,17 @@ func setIfNotEmpty(container map[string]string, key, value string) {
 	if value != "" {
 		container[key] = value
 	}
+}
+
+// SentinelMemberName returns sentinel name for redis
+func SentinelMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-sentinel", clusterName)
+}
+
+// RedisMemberName return redis name for redis cluster
+func RedisMemberName(clusterName string, group string) string {
+	if strings.EqualFold(group, "") {
+		return fmt.Sprintf("%s-redis", clusterName)
+	}
+	return fmt.Sprintf("%s-%s-redis", clusterName, group)
 }
