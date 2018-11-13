@@ -32,6 +32,8 @@ const (
 	MasterLabelKey string = "master"
 	// SlaveLabelKey redis slave role label key
 	SlaveLabelKey string = "slave"
+	// SentinelLabelKey redis sentinel role label key
+	SentinelLabelKey string = "sentinel"
 )
 
 // Label is the label field in metadatas
@@ -77,6 +79,17 @@ func (l Label) Master() Label {
 // IsMaster label componet is master
 func (l Label) IsMaster() bool {
 	return l[ComponentLabelKey] == MasterLabelKey
+}
+
+// Sentinel label assigned redis sentinel
+func (l Label) Sentinel() Label {
+	l[ComponentLabelKey] = SentinelLabelKey
+	return l
+}
+
+// IsSentinel label componet is sentinel
+func (l Label) IsSentinel() bool {
+	return l[ComponentLabelKey] == SentinelLabelKey
 }
 
 // Slave label assigned redis slave
