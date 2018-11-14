@@ -25,7 +25,7 @@ const (
 
 	// ClusterIDLabelKey is cluster id label key
 	ClusterIDLabelKey string = "redis.anywhy.github/cluster-id"
-	// AnnPodNameKey is pod name annotation key used in PV/PVC for synchronizing tidb cluster meta info
+	// AnnPodNameKey is pod name annotation key used in PV/PVC for synchronizing redis cluster meta info
 	AnnPodNameKey string = "redis.anywhy.github/pod-name"
 
 	// MasterLabelKey redis master role label key
