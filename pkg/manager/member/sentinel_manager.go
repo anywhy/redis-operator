@@ -112,8 +112,8 @@ func (smm *sentinelMemberManager) getNewSentinelServiceForRedisCluster(rc *v1alp
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "sentinel",
-					Port:       6379,
-					TargetPort: intstr.FromInt(6379),
+					Port:       16379,
+					TargetPort: intstr.FromInt(16379),
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
