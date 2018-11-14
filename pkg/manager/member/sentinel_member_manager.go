@@ -38,8 +38,21 @@ func NewSentinelMemberManager(
 }
 
 // Sync	implements sentinel logic for syncing rediscluster.
-func (smm *sentinelMemberManager) Sync(*v1alpha1.RedisCluster) error {
+func (smm *sentinelMemberManager) Sync(rc *v1alpha1.RedisCluster) error {
+	// Sync sentinel service
+	if err := smm.syncSentinelServiceForRedisCluster(rc); err != nil {
+		return err
+	}
 
+	// Sync sentinel headless service
+	if err := smm.syncSentinelHeadlessServiceForRedisCluster(rc); err != nil {
+		return err
+	}
+
+	return smm.syncSentinelDeploymentForRedisCluster(rc)
+}
+
+func (smm *sentinelMemberManager) syncSentinelDeploymentForRedisCluster(rc *v1alpha1.RedisCluster) error {
 	return nil
 }
 
