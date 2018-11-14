@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/anywhy/redis-operator/pkg/apis/redis/v1alpha1"
@@ -52,9 +53,31 @@ func setIfNotEmpty(container map[string]string, key, value string) {
 	}
 }
 
+// GetServiceType returns member's service type
+func GetServiceType(services []v1alpha1.Service, serviceName string) corev1.ServiceType {
+	for _, svc := range services {
+		if svc.Name == serviceName {
+			switch svc.Type {
+			case "NodePort":
+				return corev1.ServiceTypeNodePort
+			case "LoadBalancer":
+				return corev1.ServiceTypeLoadBalancer
+			default:
+				return corev1.ServiceTypeClusterIP
+			}
+		}
+	}
+	return corev1.ServiceTypeClusterIP
+}
+
 // SentinelMemberName returns sentinel name for redis
 func SentinelMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-sentinel", clusterName)
+}
+
+// SentinelPeerMemberName returns sentinel peer service name
+func SentinelPeerMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-sentinel-peer", clusterName)
 }
 
 // RedisMemberName return redis name for redis cluster
