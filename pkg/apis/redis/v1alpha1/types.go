@@ -8,11 +8,21 @@ import (
 // ClusterMode describes a redis cluster mode
 type ClusterMode string
 
+// MemberType represents member type
+type MemberType string
+
 const (
 	// MS means that redis cluster is master/slave
 	MS ClusterMode = "MS"
 	// Cluster means redis cluster is shard mode
 	Cluster ClusterMode = "CLUSTER"
+
+	// SentinelMemberType is sentinel container type
+	SentinelMemberType MemberType = "sentinel"
+	// RedisMemberType is sentinel container type
+	RedisMemberType MemberType = "redis"
+	// UnknownMemberType is unknown container type
+	UnknownMemberType MemberType = "unknown"
 )
 
 // +genclient
