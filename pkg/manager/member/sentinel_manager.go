@@ -21,6 +21,7 @@ type sentinelMemberManager struct {
 	svcControl    controller.ServiceControlInterface
 	svcLister     corelisters.ServiceLister
 	deployLister  extlisters.DeploymentLister
+	podLister     corelisters.PodLister
 }
 
 // NewSentinelMemberManager new redis sentinel manager
@@ -28,11 +29,13 @@ func NewSentinelMemberManager(
 	deployControl controller.DeploymentControlInterface,
 	svcControl controller.ServiceControlInterface,
 	svcLister corelisters.ServiceLister,
+	podLister corelisters.PodLister,
 	deployLister extlisters.DeploymentLister) manager.Manager {
 	return &sentinelMemberManager{
 		deployControl: deployControl,
 		svcControl:    svcControl,
 		svcLister:     svcLister,
+		podLister:     podLister,
 		deployLister:  deployLister,
 	}
 }
@@ -53,6 +56,30 @@ func (smm *sentinelMemberManager) Sync(rc *v1alpha1.RedisCluster) error {
 }
 
 func (smm *sentinelMemberManager) syncSentinelDeploymentForRedisCluster(rc *v1alpha1.RedisCluster) error {
+	ns, rcName := rc.Namespace, rc.Name
+
+	sentiDepNew := smm.getNewSentinelDeployment(rc)
+	sentiDepOld, err := smm.deployLister.Deployments(ns).Get(controller.SentinelMemberName(rcName))
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			err := setDeploymentLastAppliedConfigAnnotation(sentiDepNew)
+			if err != nil {
+				return err
+			}
+
+			err = smm.deployControl.CreateDeployment(rc, sentiDepNew)
+			if err != nil {
+				return err
+			}
+			rc.Status.Sentinel.Deployment = &extv1.DeploymentStatus{}
+		}
+		return err
+	}
+
+	err = smm.syncRedisClusterStatus(rc, sentiDepOld)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -90,6 +117,21 @@ func (smm *sentinelMemberManager) syncSentinelService(rc *v1alpha1.RedisCluster,
 
 		_, err := smm.svcControl.UpdateService(rc, &svc)
 		return err
+	}
+
+	return nil
+}
+
+func (smm *sentinelMemberManager) syncRedisClusterStatus(rc *v1alpha1.RedisCluster, dep *extv1.Deployment) error {
+	rc.Status.Sentinel.Deployment = &dep.Status
+	upgrading, err := smm.sentinelIsUpgrading(dep, rc)
+	if err != nil {
+		return err
+	}
+	if upgrading {
+		rc.Status.Sentinel.Phase = v1alpha1.UpgradePhase
+	} else {
+		rc.Status.Sentinel.Phase = v1alpha1.NormalPhase
 	}
 
 	return nil
@@ -147,6 +189,13 @@ func (smm *sentinelMemberManager) getNewSentinelHeadlessServiceForRedisCluster(r
 			Selector: sentiLabel,
 		},
 	}
+}
+
+func (smm *sentinelMemberManager) sentinelIsUpgrading(dep *extv1.Deployment, rc *v1alpha1.RedisCluster) (bool, error) {
+	if deploymentIsUpgrading(dep) {
+		return true, nil
+	}
+	return false, nil
 }
 
 const sentinelCmd = `
@@ -214,7 +263,12 @@ func (smm *sentinelMemberManager) getNewSentinelDeployment(rc *v1alpha1.RedisClu
 							},
 							VolumeMounts: volMounts,
 							Resources:    util.ResourceRequirement(rc.Spec.Sentinels.ContainerSpec),
-							Env:          []corev1.EnvVar{},
+							Env: []corev1.EnvVar{
+								{
+									Name:  "CLUSTER_NAME",
+									Value: rc.GetName(),
+								},
+							},
 						},
 					},
 					Volumes:       vols,

@@ -59,6 +59,12 @@ func (l Label) Cluster(name string) Label {
 	return l
 }
 
+// Instance adds instance kv pair to label
+func (l Label) Instance(name string) Label {
+	l[InstanceLabelKey] = name
+	return l
+}
+
 // Component adds redis component kv pair to label
 func (l Label) Component(name string) Label {
 	l[ComponentLabelKey] = name

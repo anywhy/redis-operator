@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Kubernetes Authors.
+Copyright The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ package v1alpha1
 import (
 	time "time"
 
-	redisv1alpha1 "github.com/anywhy/redis-operator/pkg/apis/redis/v1alpha1"
+	redis_v1alpha1 "github.com/anywhy/redis-operator/pkg/apis/redis/v1alpha1"
 	versioned "github.com/anywhy/redis-operator/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/anywhy/redis-operator/pkg/client/informers/externalversions/internalinterfaces"
 	v1alpha1 "github.com/anywhy/redis-operator/pkg/client/listers/redis/v1alpha1"
@@ -70,7 +70,7 @@ func NewFilteredRedisClusterInformer(client versioned.Interface, namespace strin
 				return client.RedisV1alpha1().RedisClusters(namespace).Watch(options)
 			},
 		},
-		&redisv1alpha1.RedisCluster{},
+		&redis_v1alpha1.RedisCluster{},
 		resyncPeriod,
 		indexers,
 	)
@@ -81,7 +81,7 @@ func (f *redisClusterInformer) defaultInformer(client versioned.Interface, resyn
 }
 
 func (f *redisClusterInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&redisv1alpha1.RedisCluster{}, f.defaultInformer)
+	return f.factory.InformerFor(&redis_v1alpha1.RedisCluster{}, f.defaultInformer)
 }
 
 func (f *redisClusterInformer) Lister() v1alpha1.RedisClusterLister {

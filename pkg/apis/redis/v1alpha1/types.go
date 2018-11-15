@@ -2,6 +2,7 @@ package v1alpha1
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	extv1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -23,6 +24,16 @@ const (
 	RedisMemberType MemberType = "redis"
 	// UnknownMemberType is unknown container type
 	UnknownMemberType MemberType = "unknown"
+)
+
+// MemberPhase is the current state of member
+type MemberPhase string
+
+const (
+	// NormalPhase represents normal state of Redis cluster.
+	NormalPhase MemberPhase = "Normal"
+	// UpgradePhase represents the Upgrading state of Redis cluster.
+	UpgradePhase MemberPhase = "Upgrading"
 )
 
 // +genclient
@@ -85,6 +96,7 @@ type RedisSentinelSpec struct {
 
 // RedisClusterStatus represents the current status of a redis cluster.
 type RedisClusterStatus struct {
+	Sentinel *SentinelStatus `json:"sentinel,omitempty"`
 }
 
 // ContainerSpec is the container spec of a pod
@@ -109,4 +121,10 @@ type ResourceRequirement struct {
 type Service struct {
 	Name string `json:"name,omitempty"`
 	Type string `json:"type,omitempty"`
+}
+
+// SentinelStatus is
+type SentinelStatus struct {
+	Phase      MemberPhase             `json:"phase,omitempty"`
+	Deployment *extv1.DeploymentStatus `json:"deployment,omitempty"`
 }
