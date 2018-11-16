@@ -183,7 +183,7 @@ func (smm *sentinelMemberManager) getNewSentinelServiceForRedisCluster(rc *v1alp
 	if svcConfig.Headless {
 		svc.Spec.ClusterIP = "None"
 	} else {
-		svc.Spec.Type = controller.GetServiceType(rc.Spec.Services, v1alpha1.SentinelMemberType.String())
+		svc.Spec.Type = controller.GetServiceType(rc.Spec.Redis.Services, v1alpha1.SentinelMemberType.String())
 	}
 
 	return svc
@@ -254,7 +254,7 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.RedisCl
 			},
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: func() *int32 { r := rc.Spec.Sentinels.Replicas; return &r }(),
+			Replicas: func() *int32 { r := rc.Spec.Sentinel.Replicas; return &r }(),
 			Selector: sentiLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -264,12 +264,12 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.RedisCl
 				Spec: corev1.PodSpec{
 					Affinity: util.AffinityForNodeSelector(ns,
 						true, sentiLabel.Labels(),
-						rc.Spec.Sentinels.NodeSelector),
+						rc.Spec.Sentinel.NodeSelector),
 					Containers: []corev1.Container{
 						{
 							Name:            "redis-sentinel",
-							Image:           rc.Spec.Sentinels.Image,
-							ImagePullPolicy: rc.Spec.Sentinels.ImagePullPolicy,
+							Image:           rc.Spec.Sentinel.Image,
+							ImagePullPolicy: rc.Spec.Sentinel.ImagePullPolicy,
 							Command: []string{
 								"bash", "-c", sentinelCmd,
 							},
@@ -281,7 +281,7 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.RedisCl
 								},
 							},
 							VolumeMounts: volMounts,
-							Resources:    util.ResourceRequirement(rc.Spec.Sentinels.ContainerSpec),
+							Resources:    util.ResourceRequirement(rc.Spec.Sentinel.ContainerSpec),
 							Env: []corev1.EnvVar{
 								{
 									Name:  "CLUSTER_NAME",
@@ -292,7 +292,7 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.RedisCl
 					},
 					Volumes:       vols,
 					RestartPolicy: corev1.RestartPolicyAlways,
-					Tolerations:   rc.Spec.Sentinels.Tolerations,
+					Tolerations:   rc.Spec.Sentinel.Tolerations,
 				},
 			},
 			PodManagementPolicy: apps.ParallelPodManagement,

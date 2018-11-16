@@ -119,19 +119,14 @@ func (rmm *redisMemeberManager) getNewRedisServiceForRedisCluster(rc *v1alpha1.R
 	if svcConfig.Headless {
 		svc.Spec.ClusterIP = "None"
 	} else {
-		svc.Spec.Type = controller.GetServiceType(rc.Spec.Services, v1alpha1.RedisMemberType.String())
+		svc.Spec.Type = controller.GetServiceType(rc.Spec.Redis.Services, v1alpha1.RedisMemberType.String())
 	}
 
 	return svc
 }
 
 const serverCmd = `
-slaveof=""
-if [[ "${REDIS_ROLE}" != "Master" ]];then
-  slaveof="--slaveof ${MASTER_SVC} 6379"
-fi
-
-redis-server /etc/redis/redis.conf ${slaveof}
+redis-server /etc/redis/redis.conf 
 `
 
 func (rmm *redisMemeberManager) getNewRedisStatefulSet(rc *v1alpha1.RedisCluster) (*apps.StatefulSet, error) {
@@ -157,7 +152,7 @@ func (rmm *redisMemeberManager) getNewRedisStatefulSet(rc *v1alpha1.RedisCluster
 
 	rediLabel := label.New().Cluster(rcName)
 	setName := controller.RedisMemberName(rcName, "")
-	storageClassName := rc.Spec.StorageClassName
+	storageClassName := rc.Spec.Redis.StorageClassName
 	if storageClassName == "" {
 		storageClassName = controller.DefaultStorageClassName
 	}
@@ -177,7 +172,7 @@ func (rmm *redisMemeberManager) getNewRedisStatefulSet(rc *v1alpha1.RedisCluster
 			},
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: func() *int32 { r := rc.Spec.Members; return &r }(),
+			Replicas: func() *int32 { r := rc.Spec.Redis.Members; return &r }(),
 			Selector: rediLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -187,12 +182,12 @@ func (rmm *redisMemeberManager) getNewRedisStatefulSet(rc *v1alpha1.RedisCluster
 				Spec: corev1.PodSpec{
 					Affinity: util.AffinityForNodeSelector(ns,
 						true, rediLabel.Labels(),
-						rc.Spec.Sentinels.NodeSelector),
+						rc.Spec.Redis.NodeSelector),
 					Containers: []corev1.Container{
 						{
 							Name:            "redis",
-							Image:           rc.Spec.Image,
-							ImagePullPolicy: rc.Spec.ImagePullPolicy,
+							Image:           rc.Spec.Redis.Image,
+							ImagePullPolicy: rc.Spec.Redis.ImagePullPolicy,
 							Command: []string{
 								"bash", "-c", serverCmd,
 							},
@@ -204,7 +199,7 @@ func (rmm *redisMemeberManager) getNewRedisStatefulSet(rc *v1alpha1.RedisCluster
 								},
 							},
 							VolumeMounts: volMounts,
-							Resources:    util.ResourceRequirement(rc.Spec.ContainerSpec),
+							Resources:    util.ResourceRequirement(rc.Spec.Redis.ContainerSpec),
 							Env: []corev1.EnvVar{
 								{
 									Name:  "CLUSTER_NAME",
@@ -215,7 +210,7 @@ func (rmm *redisMemeberManager) getNewRedisStatefulSet(rc *v1alpha1.RedisCluster
 					},
 					Volumes:       vols,
 					RestartPolicy: corev1.RestartPolicyAlways,
-					Tolerations:   rc.Spec.Sentinels.Tolerations,
+					Tolerations:   rc.Spec.Redis.Tolerations,
 				},
 			},
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -233,16 +228,16 @@ func (rmm *redisMemeberManager) volumeClaimTemplate(rc *v1alpha1.RedisCluster, s
 	ns, rcName := rc.GetNamespace(), rc.GetName()
 	var pvc corev1.PersistentVolumeClaim
 
-	if rc.Spec.Requests != nil && rc.Spec.Requests.Storage != "" {
-		size := rc.Spec.Requests.Storage
+	if rc.Spec.Redis.Requests != nil && rc.Spec.Redis.Requests.Storage != "" {
+		size := rc.Spec.Redis.Requests.Storage
 		q, err = resource.ParseQuantity(size)
 		if err != nil {
 			return pvc, fmt.Errorf("cant' get storage request size: %s for RedisCluster: %s/%s, %v", size, ns, rcName, err)
 		}
 	}
 
-	if rc.Spec.Limits != nil && rc.Spec.Limits.Storage != "" {
-		size := rc.Spec.Limits.Storage
+	if rc.Spec.Redis.Limits != nil && rc.Spec.Redis.Limits.Storage != "" {
+		size := rc.Spec.Redis.Limits.Storage
 		limit, err = resource.ParseQuantity(size)
 		if err != nil {
 			return pvc, fmt.Errorf("cant' get storage limit size: %s for RedisCluster: %s/%s, %v", size, ns, rcName, err)

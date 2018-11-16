@@ -64,10 +64,18 @@ type RedisClusterList struct {
 
 // RedisClusterSpec redis cluster attributes
 type RedisClusterSpec struct {
-	ContainerSpec
-
 	// Mode choose from /MS/CLUSTER
 	Mode ClusterMode `json:"mode"`
+
+	Redis RedisInstanceSpec `json:"redis"`
+
+	Sentinel RedisSentinelSpec `json:"sentinel,omitempty"`
+}
+
+// RedisInstanceSpec redis instance attributes
+type RedisInstanceSpec struct {
+	ContainerSpec
+
 	// The number of cluster members (masters)
 	Members int32 `json:"members"`
 	// The number of replicas for each master(redis cluster mode)
@@ -80,8 +88,6 @@ type RedisClusterSpec struct {
 	// Services list non-headless services type used in RedisCluster
 	Services        []Service                            `json:"services,omitempty"`
 	PVReclaimPolicy corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
-
-	Sentinels RedisSentinelSpec `json:"sentinels,omitempty"`
 }
 
 // RedisSentinelSpec redis sentinel attributes
