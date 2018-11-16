@@ -1,8 +1,8 @@
 package v1alpha1
 
 import (
+	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
-	extv1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -125,6 +125,6 @@ type Service struct {
 
 // SentinelStatus is
 type SentinelStatus struct {
-	Phase      MemberPhase             `json:"phase,omitempty"`
-	Deployment *extv1.DeploymentStatus `json:"deployment,omitempty"`
+	Phase       MemberPhase             `json:"phase,omitempty"`
+	StatefulSet *apps.StatefulSetStatus `json:"statefulset,omitempty"`
 }

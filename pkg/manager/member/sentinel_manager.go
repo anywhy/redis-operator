@@ -1,13 +1,13 @@
 package member
 
 import (
+	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
-	extv1 "k8s.io/api/extensions/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	appslisters "k8s.io/client-go/listers/apps/v1beta1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	extlisters "k8s.io/client-go/listers/extensions/v1beta1"
 
 	"github.com/anywhy/redis-operator/pkg/apis/redis/v1alpha1"
 	"github.com/anywhy/redis-operator/pkg/controller"
@@ -17,26 +17,26 @@ import (
 )
 
 type sentinelMemberManager struct {
-	deployControl controller.DeploymentControlInterface
-	svcControl    controller.ServiceControlInterface
-	svcLister     corelisters.ServiceLister
-	deployLister  extlisters.DeploymentLister
-	podLister     corelisters.PodLister
+	setControl controller.StatefulSetControlInterface
+	svcControl controller.ServiceControlInterface
+	svcLister  corelisters.ServiceLister
+	setLister  appslisters.StatefulSetLister
+	podLister  corelisters.PodLister
 }
 
 // NewSentinelMemberManager new redis sentinel manager
 func NewSentinelMemberManager(
-	deployControl controller.DeploymentControlInterface,
+	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
-	deployLister extlisters.DeploymentLister) manager.Manager {
+	setLister appslisters.StatefulSetLister) manager.Manager {
 	return &sentinelMemberManager{
-		deployControl: deployControl,
-		svcControl:    svcControl,
-		svcLister:     svcLister,
-		podLister:     podLister,
-		deployLister:  deployLister,
+		setControl: setControl,
+		svcControl: svcControl,
+		svcLister:  svcLister,
+		podLister:  podLister,
+		setLister:  setLister,
 	}
 }
 
@@ -52,31 +52,31 @@ func (smm *sentinelMemberManager) Sync(rc *v1alpha1.RedisCluster) error {
 		return err
 	}
 
-	return smm.syncSentinelDeploymentForRedisCluster(rc)
+	return smm.syncSentinelStatefulSetForRedisCluster(rc)
 }
 
-func (smm *sentinelMemberManager) syncSentinelDeploymentForRedisCluster(rc *v1alpha1.RedisCluster) error {
+func (smm *sentinelMemberManager) syncSentinelStatefulSetForRedisCluster(rc *v1alpha1.RedisCluster) error {
 	ns, rcName := rc.Namespace, rc.Name
 
-	sentiDepNew := smm.getNewSentinelDeployment(rc)
-	sentiDepOld, err := smm.deployLister.Deployments(ns).Get(controller.SentinelMemberName(rcName))
+	newSentiSet := smm.getNewSentinelStatefulSet(rc)
+	oldSentiSet, err := smm.setLister.StatefulSets(ns).Get(controller.SentinelMemberName(rcName))
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			err := setDeploymentLastAppliedConfigAnnotation(sentiDepNew)
+			err := setStatefulSetLastAppliedConfigAnnotation(newSentiSet)
 			if err != nil {
 				return err
 			}
 
-			err = smm.deployControl.CreateDeployment(rc, sentiDepNew)
+			err = smm.setControl.CreateStatefulSet(rc, newSentiSet)
 			if err != nil {
 				return err
 			}
-			rc.Status.Sentinel.Deployment = &extv1.DeploymentStatus{}
+			rc.Status.Sentinel.StatefulSet = &apps.StatefulSetStatus{}
 		}
 		return err
 	}
 
-	err = smm.syncRedisClusterStatus(rc, sentiDepOld)
+	err = smm.syncRedisClusterStatus(rc, oldSentiSet)
 	if err != nil {
 		return err
 	}
@@ -122,9 +122,9 @@ func (smm *sentinelMemberManager) syncSentinelService(rc *v1alpha1.RedisCluster,
 	return nil
 }
 
-func (smm *sentinelMemberManager) syncRedisClusterStatus(rc *v1alpha1.RedisCluster, dep *extv1.Deployment) error {
-	rc.Status.Sentinel.Deployment = &dep.Status
-	upgrading, err := smm.sentinelIsUpgrading(dep, rc)
+func (smm *sentinelMemberManager) syncRedisClusterStatus(rc *v1alpha1.RedisCluster, set *apps.StatefulSet) error {
+	rc.Status.Sentinel.StatefulSet = &set.Status
+	upgrading, err := smm.sentinelIsUpgrading(set, rc)
 	if err != nil {
 		return err
 	}
@@ -191,10 +191,30 @@ func (smm *sentinelMemberManager) getNewSentinelHeadlessServiceForRedisCluster(r
 	}
 }
 
-func (smm *sentinelMemberManager) sentinelIsUpgrading(dep *extv1.Deployment, rc *v1alpha1.RedisCluster) (bool, error) {
-	if deploymentIsUpgrading(dep) {
+func (smm *sentinelMemberManager) sentinelIsUpgrading(set *apps.StatefulSet, rc *v1alpha1.RedisCluster) (bool, error) {
+	if statefulSetIsUpgrading(set) {
 		return true, nil
 	}
+
+	instanceName := rc.GetLabels()[label.InstanceLabelKey]
+	selector, err := label.New().Instance(instanceName).Sentinel().Selector()
+	if err != nil {
+		return false, err
+	}
+	sentiPods, err := smm.podLister.Pods(rc.GetNamespace()).List(selector)
+	if err != nil {
+		return false, err
+	}
+	for _, pod := range sentiPods {
+		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
+		if !exist {
+			return false, nil
+		}
+		if revisionHash != rc.Status.Sentinel.StatefulSet.UpdateRevision {
+			return true, nil
+		}
+	}
+
 	return false, nil
 }
 
@@ -202,7 +222,7 @@ const sentinelCmd = `
 redis-server /etc/redis/sentinel.conf --sentinel
 `
 
-func (smm *sentinelMemberManager) getNewSentinelDeployment(rc *v1alpha1.RedisCluster) *extv1.Deployment {
+func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.RedisCluster) *apps.StatefulSet {
 	ns, rcName := rc.GetNamespace(), rc.GetName()
 	sentiConfigMap := controller.SentinelMemberName(rcName)
 
@@ -225,7 +245,7 @@ func (smm *sentinelMemberManager) getNewSentinelDeployment(rc *v1alpha1.RedisClu
 
 	depLabel := label.New().Cluster(rcName).Sentinel()
 	depName := controller.SentinelMemberName(rcName)
-	dep := &extv1.Deployment{
+	set := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ns,
 			Name:      depName,
@@ -234,7 +254,7 @@ func (smm *sentinelMemberManager) getNewSentinelDeployment(rc *v1alpha1.RedisClu
 				controller.GetOwnerRef(rc),
 			},
 		},
-		Spec: extv1.DeploymentSpec{
+		Spec: apps.StatefulSetSpec{
 			Replicas: func() *int32 { r := rc.Spec.Sentinels.Replicas; return &r }(),
 			Selector: depLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
@@ -278,5 +298,5 @@ func (smm *sentinelMemberManager) getNewSentinelDeployment(rc *v1alpha1.RedisClu
 			},
 		},
 	}
-	return dep
+	return set
 }
