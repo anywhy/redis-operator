@@ -1,7 +1,12 @@
 package member
 
 import (
+	"fmt"
+
+	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	appslisters "k8s.io/client-go/listers/apps/v1beta1"
@@ -11,6 +16,7 @@ import (
 	"github.com/anywhy/redis-operator/pkg/controller"
 	"github.com/anywhy/redis-operator/pkg/label"
 	"github.com/anywhy/redis-operator/pkg/manager"
+	"github.com/anywhy/redis-operator/pkg/util"
 )
 
 type redisMemeberManager struct {
@@ -52,6 +58,39 @@ func (rmm *redisMemeberManager) Sync(rc *v1alpha1.RedisCluster) error {
 	return nil
 }
 
+func (rmm *redisMemeberManager) syncRedisService(rc *v1alpha1.RedisCluster, svcConfig ServiceConfig) error {
+	ns, rcName := rc.GetNamespace(), rc.GetName()
+
+	newSvc := rmm.getNewRedisServiceForRedisCluster(rc, svcConfig)
+	oldSvc, err := rmm.svcLister.Services(ns).Get(svcConfig.MemberName(rcName))
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			err := setServiceLastAppliedConfigAnnotation(newSvc)
+			if err != nil {
+				return err
+			}
+			return rmm.svcControl.CreateService(rc, oldSvc)
+		}
+		return err
+	}
+
+	if ok, err := serviceEqual(newSvc, oldSvc); err != nil {
+		return err
+	} else if !ok {
+		svc := *oldSvc
+		svc.Spec = newSvc.Spec
+		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
+		if err = setServiceLastAppliedConfigAnnotation(&svc); err != nil {
+			return err
+		}
+
+		_, err := rmm.svcControl.UpdateService(rc, &svc)
+		return err
+	}
+
+	return nil
+}
+
 func (rmm *redisMemeberManager) getNewRedisServiceForRedisCluster(rc *v1alpha1.RedisCluster, svcConfig ServiceConfig) *corev1.Service {
 	ns, rcName := rc.Namespace, rc.Name
 
@@ -84,4 +123,149 @@ func (rmm *redisMemeberManager) getNewRedisServiceForRedisCluster(rc *v1alpha1.R
 	}
 
 	return svc
+}
+
+const serverCmd = `
+slaveof=""
+if [[ "${REDIS_ROLE}" != "Master" ]];then
+  slaveof="--slaveof ${MASTER_SVC} 6379"
+fi
+
+redis-server /etc/redis/redis.conf ${slaveof}
+`
+
+func (rmm *redisMemeberManager) getNewRedisStatefulSet(rc *v1alpha1.RedisCluster) (*apps.StatefulSet, error) {
+	ns, rcName := rc.GetNamespace(), rc.GetName()
+	redisConfigMap := controller.RedisMemberName(rcName, "")
+
+	volMounts := []corev1.VolumeMount{
+		{Name: "configfile", MountPath: "/etc/redis"},
+		// {Name: "log-dir", MountPath: "/var/log/sentinel"},
+	}
+	vols := []corev1.Volume{
+		{Name: "configfile",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: redisConfigMap,
+					},
+					Items: []corev1.KeyToPath{{Key: "config-file", Path: "redis.conf"}},
+				},
+			},
+		},
+	}
+
+	rediLabel := label.New().Cluster(rcName)
+	setName := controller.RedisMemberName(rcName, "")
+	storageClassName := rc.Spec.StorageClassName
+	if storageClassName == "" {
+		storageClassName = controller.DefaultStorageClassName
+	}
+
+	pvc, err := rmm.volumeClaimTemplate(rc, &storageClassName)
+	if err != nil {
+		return nil, err
+	}
+
+	rediSet := &apps.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: ns,
+			Name:      setName,
+			Labels:    rediLabel.Labels(),
+			OwnerReferences: []metav1.OwnerReference{
+				controller.GetOwnerRef(rc),
+			},
+		},
+		Spec: apps.StatefulSetSpec{
+			Replicas: func() *int32 { r := rc.Spec.Members; return &r }(),
+			Selector: rediLabel.LabelSelector(),
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:      rediLabel.Labels(),
+					Annotations: controller.AnnProm(2379),
+				},
+				Spec: corev1.PodSpec{
+					Affinity: util.AffinityForNodeSelector(ns,
+						true, rediLabel.Labels(),
+						rc.Spec.Sentinels.NodeSelector),
+					Containers: []corev1.Container{
+						{
+							Name:            "redis",
+							Image:           rc.Spec.Image,
+							ImagePullPolicy: rc.Spec.ImagePullPolicy,
+							Command: []string{
+								"bash", "-c", serverCmd,
+							},
+							Ports: []corev1.ContainerPort{
+								{
+									Name:          "redis",
+									ContainerPort: int32(6379),
+									Protocol:      corev1.ProtocolTCP,
+								},
+							},
+							VolumeMounts: volMounts,
+							Resources:    util.ResourceRequirement(rc.Spec.ContainerSpec),
+							Env: []corev1.EnvVar{
+								{
+									Name:  "CLUSTER_NAME",
+									Value: rc.GetName(),
+								},
+							},
+						},
+					},
+					Volumes:       vols,
+					RestartPolicy: corev1.RestartPolicyAlways,
+					Tolerations:   rc.Spec.Sentinels.Tolerations,
+				},
+			},
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+				pvc,
+			},
+		},
+	}
+	return rediSet, nil
+}
+
+func (rmm *redisMemeberManager) volumeClaimTemplate(rc *v1alpha1.RedisCluster, storageClassName *string) (corev1.PersistentVolumeClaim, error) {
+	var q, limit resource.Quantity
+	var err error
+
+	ns, rcName := rc.GetNamespace(), rc.GetName()
+	var pvc corev1.PersistentVolumeClaim
+
+	if rc.Spec.Requests != nil && rc.Spec.Requests.Storage != "" {
+		size := rc.Spec.Requests.Storage
+		q, err = resource.ParseQuantity(size)
+		if err != nil {
+			return pvc, fmt.Errorf("cant' get storage request size: %s for RedisCluster: %s/%s, %v", size, ns, rcName, err)
+		}
+	}
+
+	if rc.Spec.Limits != nil && rc.Spec.Limits.Storage != "" {
+		size := rc.Spec.Limits.Storage
+		limit, err = resource.ParseQuantity(size)
+		if err != nil {
+			return pvc, fmt.Errorf("cant' get storage limit size: %s for RedisCluster: %s/%s, %v", size, ns, rcName, err)
+		}
+	}
+
+	pvc = corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{Name: v1alpha1.RedisMemberType.String()},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{
+				corev1.ReadWriteOnce,
+			},
+			StorageClassName: storageClassName,
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: q,
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceStorage: limit,
+				},
+			},
+		},
+	}
+
+	return pvc, nil
 }

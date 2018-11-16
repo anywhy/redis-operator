@@ -52,7 +52,10 @@ func (smm *sentinelMemberManager) Sync(rc *v1alpha1.RedisCluster) error {
 func (smm *sentinelMemberManager) syncSentinelStatefulSetForRedisCluster(rc *v1alpha1.RedisCluster) error {
 	ns, rcName := rc.Namespace, rc.Name
 
-	newSentiSet := smm.getNewSentinelStatefulSet(rc)
+	newSentiSet, err := smm.getNewSentinelStatefulSet(rc)
+	if err != nil {
+		return err
+	}
 	oldSentiSet, err := smm.setLister.StatefulSets(ns).Get(controller.SentinelMemberName(rcName))
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -217,7 +220,7 @@ const sentinelCmd = `
 redis-server /etc/redis/sentinel.conf --sentinel
 `
 
-func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.RedisCluster) *apps.StatefulSet {
+func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.RedisCluster) (*apps.StatefulSet, error) {
 	ns, rcName := rc.GetNamespace(), rc.GetName()
 	sentiConfigMap := controller.SentinelMemberName(rcName)
 
@@ -238,28 +241,29 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.RedisCl
 		},
 	}
 
-	depLabel := label.New().Cluster(rcName).Sentinel()
-	depName := controller.SentinelMemberName(rcName)
-	set := &apps.StatefulSet{
+	sentiLabel := label.New().Cluster(rcName).Sentinel()
+	setName := controller.SentinelMemberName(rcName)
+
+	sentiSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ns,
-			Name:      depName,
-			Labels:    depLabel.Labels(),
+			Name:      setName,
+			Labels:    sentiLabel.Labels(),
 			OwnerReferences: []metav1.OwnerReference{
 				controller.GetOwnerRef(rc),
 			},
 		},
 		Spec: apps.StatefulSetSpec{
 			Replicas: func() *int32 { r := rc.Spec.Sentinels.Replicas; return &r }(),
-			Selector: depLabel.LabelSelector(),
+			Selector: sentiLabel.LabelSelector(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      depLabel.Labels(),
+					Labels:      sentiLabel.Labels(),
 					Annotations: controller.AnnProm(2379),
 				},
 				Spec: corev1.PodSpec{
 					Affinity: util.AffinityForNodeSelector(ns,
-						true, depLabel.Labels(),
+						true, sentiLabel.Labels(),
 						rc.Spec.Sentinels.NodeSelector),
 					Containers: []corev1.Container{
 						{
@@ -291,7 +295,8 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.RedisCl
 					Tolerations:   rc.Spec.Sentinels.Tolerations,
 				},
 			},
+			PodManagementPolicy: apps.ParallelPodManagement,
 		},
 	}
-	return set
+	return sentiSet, nil
 }
