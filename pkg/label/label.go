@@ -27,6 +27,8 @@ const (
 	ClusterIDLabelKey string = "redis.anywhy.github/cluster-id"
 	// AnnPodNameKey is pod name annotation key used in PV/PVC for synchronizing redis cluster meta info
 	AnnPodNameKey string = "redis.anywhy.github/pod-name"
+	// ClusterGroupIDLabelKey is pod name annotation key used for redis cluster group synchronizing redis cluster meta info
+	ClusterGroupIDLabelKey string = "redis.anywhy.github/cluster-group-id"
 
 	// MasterLabelKey redis master role label key
 	MasterLabelKey string = "master"
@@ -59,12 +61,6 @@ func (l Label) Cluster(name string) Label {
 	return l
 }
 
-// Instance adds instance kv pair to label
-func (l Label) Instance(name string) Label {
-	l[InstanceLabelKey] = name
-	return l
-}
-
 // Component adds redis component kv pair to label
 func (l Label) Component(name string) Label {
 	l[ComponentLabelKey] = name
@@ -74,6 +70,17 @@ func (l Label) Component(name string) Label {
 // ComponentType returns component type
 func (l Label) ComponentType() string {
 	return l[ComponentLabelKey]
+}
+
+// Group add redis cluster group id kv pair to label
+func (l Label) Group(groupID string) Label {
+	l[ClusterGroupIDLabelKey] = groupID
+	return l
+}
+
+// GetGroup get redis cluster grop id
+func (l Label) GetGroup() string {
+	return l[ClusterGroupIDLabelKey]
 }
 
 // Master label assigned redis master
