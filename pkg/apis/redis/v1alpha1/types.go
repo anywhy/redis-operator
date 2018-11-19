@@ -102,6 +102,7 @@ type RedisSentinelSpec struct {
 
 // RedisClusterStatus represents the current status of a redis cluster.
 type RedisClusterStatus struct {
+	Redis    *RedisStatus    `json:"redis,omitempty"`
 	Sentinel *SentinelStatus `json:"sentinel,omitempty"`
 }
 
@@ -131,6 +132,12 @@ type Service struct {
 
 // SentinelStatus is
 type SentinelStatus struct {
+	Phase       MemberPhase             `json:"phase,omitempty"`
+	StatefulSet *apps.StatefulSetStatus `json:"statefulset,omitempty"`
+}
+
+// RedisStatus is
+type RedisStatus struct {
 	Phase       MemberPhase             `json:"phase,omitempty"`
 	StatefulSet *apps.StatefulSetStatus `json:"statefulset,omitempty"`
 }

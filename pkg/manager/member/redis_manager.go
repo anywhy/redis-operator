@@ -54,7 +54,62 @@ func NewRedisMemberManager(
 
 // Sync	implements redis logic for syncing rediscluster.
 func (rmm *redisMemeberManager) Sync(rc *v1alpha1.RedisCluster) error {
+	if err := rmm.syncRedisServiceForRedisCluster(rc); err != nil {
+		return err
+	}
+	return rmm.syncRedisStatefulSetForRedisCluster(rc)
+}
 
+func (rmm *redisMemeberManager) syncRedisServiceForRedisCluster(rc *v1alpha1.RedisCluster) error {
+	svcList := []ServiceConfig{
+		{
+			Name:     "redis-master",
+			Port:     6379,
+			SvcLabel: func(l label.Label) label.Label { return l.Master() },
+			MemberName: func(clusterName string) string {
+				return fmt.Sprintf("%s-master", controller.RedisMemberName(clusterName, ""))
+			},
+			Headless: false,
+		},
+		{
+			Name:     "redis-master-peer",
+			Port:     6379,
+			SvcLabel: func(l label.Label) label.Label { return l.Master() },
+			MemberName: func(clusterName string) string {
+				return fmt.Sprintf("%s-master-peer", controller.RedisMemberName(clusterName, ""))
+			},
+			Headless: true,
+		},
+		{
+			Name:     "redis-salve",
+			Port:     6379,
+			SvcLabel: func(l label.Label) label.Label { return l.Slave() },
+			MemberName: func(clusterName string) string {
+				return fmt.Sprintf("%s-slave", controller.RedisMemberName(clusterName, ""))
+			},
+			Headless: false,
+		},
+		{
+			Name:     "redis-salve-peer",
+			Port:     6379,
+			SvcLabel: func(l label.Label) label.Label { return l.Slave() },
+			MemberName: func(clusterName string) string {
+				return fmt.Sprintf("%s-slave-peer", controller.RedisMemberName(clusterName, ""))
+			},
+			Headless: true,
+		},
+	}
+
+	for _, svc := range svcList {
+		if err := rmm.syncRedisService(rc, svc); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (rmm *redisMemeberManager) syncRedisStatefulSetForRedisCluster(rc *v1alpha1.RedisCluster) error {
 	return nil
 }
 
@@ -123,6 +178,48 @@ func (rmm *redisMemeberManager) getNewRedisServiceForRedisCluster(rc *v1alpha1.R
 	}
 
 	return svc
+}
+
+func (rmm *redisMemeberManager) syncRedisStatefulSetStatus(rc *v1alpha1.RedisCluster, set *apps.StatefulSet) error {
+	rc.Status.Redis.StatefulSet = &set.Status
+	upgrading, err := rmm.redislIsUpgrading(set, rc)
+	if err != nil {
+		return err
+	}
+	if upgrading {
+		rc.Status.Redis.Phase = v1alpha1.UpgradePhase
+	} else {
+		rc.Status.Redis.Phase = v1alpha1.NormalPhase
+	}
+
+	return nil
+}
+
+func (rmm *redisMemeberManager) redislIsUpgrading(set *apps.StatefulSet, rc *v1alpha1.RedisCluster) (bool, error) {
+	if statefulSetIsUpgrading(set) {
+		return true, nil
+	}
+
+	instanceName := rc.GetLabels()[label.InstanceLabelKey]
+	selector, err := label.New().Cluster(instanceName).Master().Slave().Selector()
+	if err != nil {
+		return false, err
+	}
+	setPods, err := rmm.podLister.Pods(rc.GetNamespace()).List(selector)
+	if err != nil {
+		return false, err
+	}
+	for _, pod := range setPods {
+		revisionHash, exist := pod.Labels[apps.ControllerRevisionHashLabelKey]
+		if !exist {
+			return false, nil
+		}
+		if revisionHash != rc.Status.Redis.StatefulSet.UpdateRevision {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 const serverCmd = `
