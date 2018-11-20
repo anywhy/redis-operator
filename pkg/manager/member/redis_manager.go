@@ -110,6 +110,63 @@ func (rmm *redisMemeberManager) syncRedisServiceForRedisCluster(rc *v1alpha1.Red
 }
 
 func (rmm *redisMemeberManager) syncRedisStatefulSetForRedisCluster(rc *v1alpha1.RedisCluster) error {
+	ns, rcName := rc.GetNamespace(), rc.Name
+
+	newSet, err := rmm.getNewRedisStatefulSet(rc)
+	if err != nil {
+		return err
+	}
+
+	oldSet, err := rmm.setLister.StatefulSets(ns).Get(controller.RedisMemberName(rcName, ""))
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			err = setStatefulSetLastAppliedConfigAnnotation(newSet)
+			if err != nil {
+				return err
+			}
+
+			if err := rmm.setControl.CreateStatefulSet(rc, newSet); err != nil {
+				return err
+			}
+			rc.Status.Redis.StatefulSet = &apps.StatefulSetStatus{}
+			return nil
+		}
+
+		return err
+	}
+
+	if err := rmm.syncRedisStatefulSetStatus(rc, oldSet); err != nil {
+		return err
+	}
+
+	// TODO update
+	if !templateEqual(newSet.Spec.Template, oldSet.Spec.Template) || rc.Status.Redis.Phase == v1alpha1.UpgradePhase {
+
+	}
+
+	// TODO scaleout
+	if *newSet.Spec.Replicas > *oldSet.Spec.Replicas {
+
+	}
+
+	// TODO scalein
+	if *newSet.Spec.Replicas < *oldSet.Spec.Replicas {
+
+	}
+
+	if !statefulSetEqual(*newSet, *oldSet) {
+		set := *oldSet
+		set.Spec.Template = newSet.Spec.Template
+		*set.Spec.Replicas = *newSet.Spec.Replicas
+		set.Spec.UpdateStrategy = newSet.Spec.UpdateStrategy
+		if err := setStatefulSetLastAppliedConfigAnnotation(&set); err != nil {
+			return err
+		}
+
+		_, err = rmm.setControl.UpdateStatefulSet(rc, &set)
+		return err
+	}
+
 	return nil
 }
 

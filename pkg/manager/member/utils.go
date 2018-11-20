@@ -88,6 +88,22 @@ func templateEqual(new corev1.PodTemplateSpec, old corev1.PodTemplateSpec) bool 
 	return false
 }
 
+// statefulSetEqual compares the new Statefulset's spec with old Statefulset's last applied config
+func statefulSetEqual(new apps.StatefulSet, old apps.StatefulSet) bool {
+	oldConfig := apps.StatefulSetSpec{}
+	if lastAppliedConfig, ok := old.Annotations[LastAppliedConfigAnnotation]; ok {
+		err := json.Unmarshal([]byte(lastAppliedConfig), &oldConfig)
+		if err != nil {
+			glog.Errorf("unmarshal Statefulset: [%s/%s]'s applied config failed,error: %v", old.GetNamespace(), old.GetName(), err)
+			return false
+		}
+		return apiequality.Semantic.DeepEqual(oldConfig.Replicas, new.Spec.Replicas) &&
+			apiequality.Semantic.DeepEqual(oldConfig.Template, new.Spec.Template) &&
+			apiequality.Semantic.DeepEqual(oldConfig.UpdateStrategy, new.Spec.UpdateStrategy)
+	}
+	return false
+}
+
 // statefulSetIsUpgrading confirms whether the statefulSet is upgrading phase
 func statefulSetIsUpgrading(set *apps.StatefulSet) bool {
 	if set.Status.ObservedGeneration == nil {

@@ -61,6 +61,8 @@ func (rpc *realPodControl) UpdatePod(rc *v1alpha1.RedisCluster, pod *corev1.Pod)
 	ns := rc.GetNamespace()
 	rcName := rc.GetName()
 
+	// TODO update metadata
+
 	var updatePod *corev1.Pod
 	// don't wait due to limited number of clients, but backoff after the default number of steps
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
