@@ -140,4 +140,5 @@ type SentinelStatus struct {
 type RedisStatus struct {
 	Phase       MemberPhase             `json:"phase,omitempty"`
 	StatefulSet *apps.StatefulSetStatus `json:"statefulset,omitempty"`
+	MasterName  string                  `json:"masterName,omitempty"`
 }

@@ -25,6 +25,7 @@ type redisMemeberManager struct {
 	svcLister  corelisters.ServiceLister
 	setLister  appslisters.StatefulSetLister
 	podLister  corelisters.PodLister
+	podControl controller.PodControlInterface
 }
 
 // ServiceConfig config to a K8s service
@@ -42,6 +43,7 @@ func NewRedisMemberManager(
 	svcControl controller.ServiceControlInterface,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
+	podControl controller.PodControlInterface,
 	setLister appslisters.StatefulSetLister) manager.Manager {
 	return &redisMemeberManager{
 		setControl: setControl,
@@ -168,6 +170,31 @@ func (rmm *redisMemeberManager) syncRedisStatefulSetForRedisCluster(rc *v1alpha1
 	}
 
 	return nil
+}
+
+// init redis master
+func (rmm *redisMemeberManager) initRedisMaster(rc *v1alpha1.RedisCluster) (*corev1.Pod, error) {
+	ns, rcName := rc.GetNamespace(), rc.GetName()
+
+	masterPodName := ordinalPodName(v1alpha1.RedisMemberType, rcName, 0)
+	if rc.Status.Redis != nil && rc.Status.Redis.MasterName != "" {
+		masterPodName = rc.Status.Redis.MasterName
+	}
+
+	masterPod, err := rmm.podLister.Pods(ns).Get(masterPodName)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return nil, err
+	}
+
+	if masterPod != nil {
+		masterPodCopy := masterPod.DeepCopy()
+		if masterPodCopy.Annotations[label.ComponentLabelKey] != label.MasterLabelKey {
+			return masterPod, nil
+		}
+		masterPodCopy.Annotations[label.ComponentLabelKey] = label.MasterLabelKey
+		return rmm.podControl.UpdatePod(rc, masterPodCopy)
+	}
+	return masterPod, nil
 }
 
 func (rmm *redisMemeberManager) syncRedisService(rc *v1alpha1.RedisCluster, svcConfig ServiceConfig) error {
@@ -367,6 +394,7 @@ func (rmm *redisMemeberManager) getNewRedisStatefulSet(rc *v1alpha1.RedisCluster
 					Tolerations:   rc.Spec.Redis.Tolerations,
 				},
 			},
+			PodManagementPolicy: apps.ParallelPodManagement,
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 				pvc,
 			},

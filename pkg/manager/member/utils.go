@@ -1,11 +1,15 @@
 package member
 
 import (
+	"fmt"
+
 	"github.com/golang/glog"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/json"
+
+	"github.com/anywhy/redis-operator/pkg/apis/redis/v1alpha1"
 )
 
 const (
@@ -116,4 +120,8 @@ func statefulSetIsUpgrading(set *apps.StatefulSet) bool {
 		return true
 	}
 	return false
+}
+
+func ordinalPodName(memberType v1alpha1.MemberType, rcName string, ordinal int32) string {
+	return fmt.Sprintf("%s-%s-%d", rcName, memberType, ordinal)
 }
