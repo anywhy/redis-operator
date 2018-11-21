@@ -188,10 +188,10 @@ func (rmm *redisMemeberManager) initRedisMaster(rc *v1alpha1.RedisCluster) (*cor
 
 	if masterPod != nil {
 		masterPodCopy := masterPod.DeepCopy()
-		if masterPodCopy.Annotations[label.ComponentLabelKey] != label.MasterLabelKey {
+		if masterPodCopy.Labels[label.ComponentLabelKey] != label.MasterLabelKey {
 			return masterPod, nil
 		}
-		masterPodCopy.Annotations[label.ComponentLabelKey] = label.MasterLabelKey
+		masterPodCopy.Labels[label.ComponentLabelKey] = label.MasterLabelKey
 		return rmm.podControl.UpdatePod(rc, masterPodCopy)
 	}
 	return masterPod, nil
