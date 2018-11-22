@@ -55,13 +55,10 @@ func (rpc *realPVCControl) UpdatePVC(rc *v1alpha1.RedisCluster, pvc *corev1.Pers
 
 	if pod != nil {
 		podName := pod.GetName()
-		clusterID := pod.Labels[label.ClusterIDLabelKey]
-		if pvc.Labels[label.ClusterIDLabelKey] == clusterID &&
-			pvc.Annotations[label.AnnPodNameKey] == podName {
+		if pvc.Annotations[label.AnnPodNameKey] == podName {
 			glog.V(4).Infof("pvc %s/%s already has labels and annotations synced, skipping, TidbCluster: %s", ns, pvcName, rcName)
 		} else {
 			// udpate labels and anno
-			setIfNotEmpty(pvc.Labels, label.ClusterIDLabelKey, clusterID)
 			setIfNotEmpty(pvc.Annotations, label.AnnPodNameKey, podName)
 		}
 	}

@@ -15,6 +15,7 @@ import (
 	"k8s.io/client-go/util/retry"
 
 	"github.com/anywhy/redis-operator/pkg/apis/redis/v1alpha1"
+	"github.com/anywhy/redis-operator/pkg/label"
 )
 
 // PodControlInterface defines the interface that RedisController uses to create, update, and delete Pods,
@@ -58,10 +59,20 @@ func (rpc *realPodControl) CreatePod(rc *v1alpha1.RedisCluster, pod *corev1.Pod)
 }
 
 func (rpc *realPodControl) UpdatePod(rc *v1alpha1.RedisCluster, pod *corev1.Pod) (*corev1.Pod, error) {
-	ns := rc.GetNamespace()
-	rcName := rc.GetName()
+	ns, rcName, labels := rc.GetNamespace(), rc.GetName(), rc.GetLabels()
+	if labels == nil {
+		return pod, fmt.Errorf("pod %s/%s has empty labels, RedisCluster: %s", ns, pod.Name, rcName)
+	}
 
-	// TODO update metadata
+	_, ok := labels[label.InstanceLabelKey]
+	if !ok {
+		return pod, fmt.Errorf("pod %s/%s doesn't have %s label, RedisCluster: %s", ns,
+			pod.Name, label.InstanceLabelKey, rcName)
+	}
+
+	if _, ok := labels[label.ComponentLabelKey]; !ok {
+		labels[label.ComponentLabelKey] = label.SlaveLabelKey
+	}
 
 	var updatePod *corev1.Pod
 	// don't wait due to limited number of clients, but backoff after the default number of steps

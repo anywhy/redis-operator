@@ -23,8 +23,6 @@ const (
 	// NamespaceLabelKey is label key used in PV for easy querying
 	NamespaceLabelKey string = "app.kubernetes.io/namespace"
 
-	// ClusterIDLabelKey is cluster id label key
-	ClusterIDLabelKey string = "redis.anywhy.github/cluster-id"
 	// AnnPodNameKey is pod name annotation key used in PV/PVC for synchronizing redis cluster meta info
 	AnnPodNameKey string = "redis.anywhy.github/pod-name"
 	// ClusterGroupIDLabelKey is pod name annotation key used for redis cluster group synchronizing redis cluster meta info

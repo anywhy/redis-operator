@@ -20,12 +20,13 @@ import (
 )
 
 type redisMemeberManager struct {
-	setControl controller.StatefulSetControlInterface
-	svcControl controller.ServiceControlInterface
-	svcLister  corelisters.ServiceLister
-	setLister  appslisters.StatefulSetLister
-	podLister  corelisters.PodLister
-	podControl controller.PodControlInterface
+	setControl  controller.StatefulSetControlInterface
+	svcControl  controller.ServiceControlInterface
+	svcLister   corelisters.ServiceLister
+	setLister   appslisters.StatefulSetLister
+	podLister   corelisters.PodLister
+	podControl  controller.PodControlInterface
+	redisScaler Scaler
 }
 
 // ServiceConfig config to a K8s service
@@ -44,13 +45,15 @@ func NewRedisMemberManager(
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
 	podControl controller.PodControlInterface,
-	setLister appslisters.StatefulSetLister) manager.Manager {
+	setLister appslisters.StatefulSetLister,
+	redisScaler Scaler) manager.Manager {
 	return &redisMemeberManager{
-		setControl: setControl,
-		svcControl: svcControl,
-		svcLister:  svcLister,
-		podLister:  podLister,
-		setLister:  setLister,
+		setControl:  setControl,
+		svcControl:  svcControl,
+		svcLister:   svcLister,
+		podLister:   podLister,
+		setLister:   setLister,
+		redisScaler: redisScaler,
 	}
 }
 
@@ -137,6 +140,12 @@ func (rmm *redisMemeberManager) syncRedisStatefulSetForRedisCluster(rc *v1alpha1
 		return err
 	}
 
+	// init cluster master
+	if _, err := rmm.initRedisMaster(rc); err != nil {
+		return err
+	}
+
+	// sync status
 	if err := rmm.syncRedisStatefulSetStatus(rc, oldSet); err != nil {
 		return err
 	}
@@ -146,14 +155,16 @@ func (rmm *redisMemeberManager) syncRedisStatefulSetForRedisCluster(rc *v1alpha1
 
 	}
 
-	// TODO scaleout
 	if *newSet.Spec.Replicas > *oldSet.Spec.Replicas {
-
+		if err := rmm.redisScaler.ScaleOut(rc, newSet, oldSet); err != nil {
+			return err
+		}
 	}
 
-	// TODO scalein
 	if *newSet.Spec.Replicas < *oldSet.Spec.Replicas {
-
+		if err := rmm.redisScaler.ScaleIn(rc, newSet, oldSet); err != nil {
+			return err
+		}
 	}
 
 	if !statefulSetEqual(*newSet, *oldSet) {
@@ -192,6 +203,7 @@ func (rmm *redisMemeberManager) initRedisMaster(rc *v1alpha1.RedisCluster) (*cor
 			return masterPod, nil
 		}
 		masterPodCopy.Labels[label.ComponentLabelKey] = label.MasterLabelKey
+		rc.Status.Redis.MasterName = masterPodCopy.Name
 		return rmm.podControl.UpdatePod(rc, masterPodCopy)
 	}
 	return masterPod, nil

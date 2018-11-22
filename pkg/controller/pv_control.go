@@ -73,13 +73,11 @@ func (rpc *realPVControl) UpdatePV(rc *v1alpha1.RedisCluster, pv *corev1.Persist
 
 	component := pvc.Labels[label.ComponentLabelKey]
 	podName := pvc.Annotations[label.AnnPodNameKey]
-	clusterID := pvc.Labels[label.ClusterIDLabelKey]
 	if pv.Labels[label.NamespaceLabelKey] == ns &&
 		pv.Labels[label.ComponentLabelKey] == component &&
 		pv.Labels[label.NameLabelKey] == pvc.Labels[label.NameLabelKey] &&
 		pv.Labels[label.ManagedByLabelKey] == pvc.Labels[label.ManagedByLabelKey] &&
 		pv.Labels[label.InstanceLabelKey] == pvc.Labels[label.InstanceLabelKey] &&
-		pv.Labels[label.ClusterIDLabelKey] == clusterID &&
 		pv.Annotations[label.AnnPodNameKey] == podName {
 		glog.V(4).Infof("pv %s already has labels and annotations synced, skipping. RedisCluster: %s/%s", pvName, ns, rcName)
 		return pv, nil
@@ -91,7 +89,6 @@ func (rpc *realPVControl) UpdatePV(rc *v1alpha1.RedisCluster, pv *corev1.Persist
 	pv.Labels[label.ManagedByLabelKey] = pvc.Labels[label.ManagedByLabelKey]
 	pv.Labels[label.InstanceLabelKey] = pvc.Labels[label.InstanceLabelKey]
 
-	setIfNotEmpty(pv.Labels, label.ClusterIDLabelKey, clusterID)
 	setIfNotEmpty(pv.Annotations, label.AnnPodNameKey, podName)
 
 	labels := pv.GetLabels()
