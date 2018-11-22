@@ -122,6 +122,30 @@ func statefulSetIsUpgrading(set *apps.StatefulSet) bool {
 	return false
 }
 
+func podinfoVolume() (corev1.VolumeMount, corev1.Volume) {
+	m := corev1.VolumeMount{Name: "podinfo", ReadOnly: true, MountPath: "/etc/podinfo"}
+	v := corev1.Volume{
+		Name: "podinfo",
+		VolumeSource: corev1.VolumeSource{
+			DownwardAPI: &corev1.DownwardAPIVolumeSource{
+				Items: []corev1.DownwardAPIVolumeFile{
+					{
+						Path:     "labels",
+						FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.labels"},
+					},
+					{
+						Path: "redisrole",
+						FieldRef: &corev1.ObjectFieldSelector{
+							FieldPath: "metadata.labels['app.kubernetes.io/component']",
+						},
+					},
+				},
+			},
+		},
+	}
+	return m, v
+}
+
 func ordinalPodName(memberType v1alpha1.MemberType, rcName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%s-%d", rcName, memberType, ordinal)
 }

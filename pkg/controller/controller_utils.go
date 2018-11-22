@@ -2,7 +2,6 @@ package controller
 
 import (
 	"fmt"
-	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -81,9 +80,6 @@ func SentinelPeerMemberName(clusterName string) string {
 }
 
 // RedisMemberName return redis name for redis cluster
-func RedisMemberName(clusterName string, group string) string {
-	if strings.EqualFold(group, "") {
-		return fmt.Sprintf("%s-redis", clusterName)
-	}
-	return fmt.Sprintf("%s-%s-redis", clusterName, group)
+func RedisMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-redis", clusterName)
 }

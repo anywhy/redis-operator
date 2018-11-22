@@ -69,7 +69,7 @@ func (rmm *redisMemeberManager) syncRedisServiceForRedisCluster(rc *v1alpha1.Red
 			Port:     6379,
 			SvcLabel: func(l label.Label) label.Label { return l.Master() },
 			MemberName: func(clusterName string) string {
-				return fmt.Sprintf("%s-master", controller.RedisMemberName(clusterName, ""))
+				return fmt.Sprintf("%s-master", controller.RedisMemberName(clusterName))
 			},
 			Headless: false,
 		},
@@ -78,7 +78,7 @@ func (rmm *redisMemeberManager) syncRedisServiceForRedisCluster(rc *v1alpha1.Red
 			Port:     6379,
 			SvcLabel: func(l label.Label) label.Label { return l.Master() },
 			MemberName: func(clusterName string) string {
-				return fmt.Sprintf("%s-master-peer", controller.RedisMemberName(clusterName, ""))
+				return fmt.Sprintf("%s-master-peer", controller.RedisMemberName(clusterName))
 			},
 			Headless: true,
 		},
@@ -87,7 +87,7 @@ func (rmm *redisMemeberManager) syncRedisServiceForRedisCluster(rc *v1alpha1.Red
 			Port:     6379,
 			SvcLabel: func(l label.Label) label.Label { return l.Slave() },
 			MemberName: func(clusterName string) string {
-				return fmt.Sprintf("%s-slave", controller.RedisMemberName(clusterName, ""))
+				return fmt.Sprintf("%s-slave", controller.RedisMemberName(clusterName))
 			},
 			Headless: false,
 		},
@@ -96,7 +96,7 @@ func (rmm *redisMemeberManager) syncRedisServiceForRedisCluster(rc *v1alpha1.Red
 			Port:     6379,
 			SvcLabel: func(l label.Label) label.Label { return l.Slave() },
 			MemberName: func(clusterName string) string {
-				return fmt.Sprintf("%s-slave-peer", controller.RedisMemberName(clusterName, ""))
+				return fmt.Sprintf("%s-slave-peer", controller.RedisMemberName(clusterName))
 			},
 			Headless: true,
 		},
@@ -119,7 +119,7 @@ func (rmm *redisMemeberManager) syncRedisStatefulSetForRedisCluster(rc *v1alpha1
 		return err
 	}
 
-	oldSet, err := rmm.setLister.StatefulSets(ns).Get(controller.RedisMemberName(rcName, ""))
+	oldSet, err := rmm.setLister.StatefulSets(ns).Get(controller.RedisMemberName(rcName))
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			err = setStatefulSetLastAppliedConfigAnnotation(newSet)
@@ -306,19 +306,54 @@ func (rmm *redisMemeberManager) redislIsUpgrading(set *apps.StatefulSet, rc *v1a
 	return false, nil
 }
 
+// redis start commond
 const serverCmd = `
-redis-server /etc/redis/redis.conf 
+set -uo pipefail
+ROLE=""
+
+elapseTime=0
+period=1
+threshold=30
+while true; do
+    sleep ${period}
+    elapseTime=$(( elapseTime+period ))
+
+    if [[ ${elapseTime} -ge ${threshold} ]]
+    then
+        echo "waiting for redis master role timeout" >&2
+        exit 1
+	fi
+
+	if [[ -e /etc/podinfo/redisrole ]]; then
+		ROLE=$(cat /etc/podinfo/redisrole)
+	fi
+	
+done
+
+ARGS=/etc/redis/redis.conf
+
+if [[ X${ROLE} != Xmaster ]]
+then
+	ARGS="${ARGS} --slaveof ${PEER_MASTER_SERVICE_NAME}.${NAMESPACE}.svc 6379"
+fi
+
+echo "starting redis-server ..."
+echo "redis-server ${ARGS}"
+exec redis-server ${ARGS} 
 `
 
 func (rmm *redisMemeberManager) getNewRedisStatefulSet(rc *v1alpha1.RedisCluster) (*apps.StatefulSet, error) {
 	ns, rcName := rc.GetNamespace(), rc.GetName()
-	redisConfigMap := controller.RedisMemberName(rcName, "")
+	redisConfigMap := controller.RedisMemberName(rcName)
 
+	podMount, podVolume := podinfoVolume()
 	volMounts := []corev1.VolumeMount{
+		podMount,
 		{Name: "configfile", MountPath: "/etc/redis"},
 		// {Name: "log-dir", MountPath: "/var/log/sentinel"},
 	}
 	vols := []corev1.Volume{
+		podVolume,
 		{Name: "configfile",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
@@ -332,7 +367,7 @@ func (rmm *redisMemeberManager) getNewRedisStatefulSet(rc *v1alpha1.RedisCluster
 	}
 
 	rediLabel := label.New().Cluster(rcName)
-	setName := controller.RedisMemberName(rcName, "")
+	setName := controller.RedisMemberName(rcName)
 	storageClassName := rc.Spec.Redis.StorageClassName
 	if storageClassName == "" {
 		storageClassName = controller.DefaultStorageClassName
@@ -383,8 +418,20 @@ func (rmm *redisMemeberManager) getNewRedisStatefulSet(rc *v1alpha1.RedisCluster
 							Resources:    util.ResourceRequirement(rc.Spec.Redis.ContainerSpec),
 							Env: []corev1.EnvVar{
 								{
+									Name: "NAMESPACE",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.namespace",
+										},
+									},
+								},
+								{
 									Name:  "CLUSTER_NAME",
 									Value: rc.GetName(),
+								},
+								{
+									Name:  "PEER_MASTER_SERVICE_NAME",
+									Value: fmt.Sprintf("%s-master-peer", controller.RedisMemberName(rcName)),
 								},
 							},
 						},
