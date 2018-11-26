@@ -38,8 +38,8 @@ type ServiceConfig struct {
 	Headless   bool
 }
 
-// NewRedisMemberManager new redis instance manager
-func NewRedisMemberManager(
+// NewRedisMSMemberManager new redis instance manager
+func NewRedisMSMemberManager(
 	setControl controller.StatefulSetControlInterface,
 	svcControl controller.ServiceControlInterface,
 	svcLister corelisters.ServiceLister,
