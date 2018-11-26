@@ -73,7 +73,7 @@ func collectEvents(source <-chan string) []string {
 	return events
 }
 
-// GetName concatenate tidb cluster name and member name, used for controller managed resource name
+// GetName concatenate redis cluster name and member name, used for controller managed resource name
 func GetName(rcName string, name string) string {
 	return fmt.Sprintf("%s-%s", rcName, name)
 }

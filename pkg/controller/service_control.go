@@ -17,7 +17,7 @@ import (
 	"github.com/anywhy/redis-operator/pkg/apis/redis/v1alpha1"
 )
 
-// ServiceControlInterface manages Services used in TidbCluster
+// ServiceControlInterface manages Services used in RedisCluster
 type ServiceControlInterface interface {
 	CreateService(*v1alpha1.RedisCluster, *corev1.Service) error
 	UpdateService(*v1alpha1.RedisCluster, *corev1.Service) (*corev1.Service, error)

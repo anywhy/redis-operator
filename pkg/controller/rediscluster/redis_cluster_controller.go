@@ -145,7 +145,7 @@ func NewController(
 	return rcc
 }
 
-// Run runs the tidbcluster controller.
+// Run runs the rediscluster controller.
 func (rcc *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer rcc.queue.ShutDown()
@@ -225,7 +225,7 @@ func (rcc *Controller) enqueueRedisCluster(obj interface{}) {
 	rcc.queue.Add(key)
 }
 
-// addStatefulSet adds the tidbcluster for the statefulset to the sync queue
+// addStatefulSet adds the redisbcluster for the statefulset to the sync queue
 func (rcc *Controller) addStatefulSet(obj interface{}) {
 	set := obj.(*apps.StatefulSet)
 	ns, setName := set.GetNamespace(), set.GetName()

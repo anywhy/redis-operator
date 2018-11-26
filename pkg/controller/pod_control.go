@@ -89,7 +89,7 @@ func (rpc *realPodControl) UpdatePod(rc *v1alpha1.RedisCluster, pod *corev1.Pod)
 			// make a copy so we don't mutate the shared cache
 			pod = updated.DeepCopy()
 		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated TidbCluster %s/%s from lister: %v", ns, rcName, err))
+			utilruntime.HandleError(fmt.Errorf("error getting updated RedisCluster %s/%s from lister: %v", ns, rcName, err))
 		}
 
 		return updateErr

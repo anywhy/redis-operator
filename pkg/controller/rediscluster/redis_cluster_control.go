@@ -47,7 +47,7 @@ func NewDefaultRedisClusterControl(
 	}
 }
 
-// UpdateTidbCluster executes the core logic loop for a rediscluster.
+// UpdateRedisCluster executes the core logic loop for a rediscluster.
 func (rcc *defaultRedisClusterControl) UpdateRedisCluster(tc *v1alpha1.RedisCluster) error {
 
 	return nil

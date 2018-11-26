@@ -98,10 +98,10 @@ func (rpc *realPVControl) UpdatePV(rc *v1alpha1.RedisCluster, pv *corev1.Persist
 		var updateErr error
 		updatePV, updateErr = rpc.kubeCli.CoreV1().PersistentVolumes().Update(pv)
 		if updateErr == nil {
-			glog.Infof("PV: [%s] updated successfully, TidbCluster: %s/%s", pvName, ns, rcName)
+			glog.Infof("PV: [%s] updated successfully, RedisCluster: %s/%s", pvName, ns, rcName)
 			return nil
 		}
-		glog.Errorf("failed to update PV: [%s], TidbCluster %s/%s, error: %v", pvName, ns, rcName, err)
+		glog.Errorf("failed to update PV: [%s], RedisCluster %s/%s, error: %v", pvName, ns, rcName, err)
 
 		if updated, err := rpc.pvLister.Get(pvName); err == nil {
 			// make a copy so we don't mutate the shared cache
