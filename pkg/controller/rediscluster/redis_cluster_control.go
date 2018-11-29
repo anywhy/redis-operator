@@ -1,6 +1,8 @@
 package rediscluster
 
 import (
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
 
 	"github.com/anywhy/redis-operator/pkg/apis/redis/v1alpha1"
@@ -48,7 +50,26 @@ func NewDefaultRedisClusterControl(
 }
 
 // UpdateRedisCluster executes the core logic loop for a rediscluster.
-func (rcc *defaultRedisClusterControl) UpdateRedisCluster(tc *v1alpha1.RedisCluster) error {
+func (rcc *defaultRedisClusterControl) UpdateRedisCluster(rc *v1alpha1.RedisCluster) error {
+	oldStatus := rc.Status.DeepCopy()
+	var errs []error
+
+	err := rcc.updateRedisCluster(rc)
+	if err != nil {
+		errs = append(errs, err)
+	}
+
+	if !apiequality.Semantic.DeepEqual(&rc.Status, oldStatus) {
+		_, err := rcc.rcControl.UpdateRedisCluster(rc.DeepCopy(), &rc.Status, oldStatus)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	return errorutils.NewAggregate(errs)
+}
+
+func (rcc *defaultRedisClusterControl) updateRedisCluster(rc *v1alpha1.RedisCluster) error {
 
 	return nil
 }

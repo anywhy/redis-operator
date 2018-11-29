@@ -18,7 +18,8 @@ import (
 
 // RedisClusterControlInterface manages RedisClusters
 type RedisClusterControlInterface interface {
-	UpdateRedisCluster(*v1alpha1.RedisCluster, *v1alpha1.RedisClusterStatus, *v1alpha1.RedisClusterStatus) (*v1alpha1.RedisCluster, error)
+	UpdateRedisCluster(rc *v1alpha1.RedisCluster, newStatus *v1alpha1.RedisClusterStatus,
+		oldStatus *v1alpha1.RedisClusterStatus) (*v1alpha1.RedisCluster, error)
 }
 
 type realRedisClusterControl struct {
