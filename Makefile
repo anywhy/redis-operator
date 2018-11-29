@@ -19,3 +19,6 @@ build: controller-manager
 
 controller-manager:
 	$(GO) -ldflags '$(LDFLAGS)' -o images/redis-operator/bin/redis-controller-manager cmd/controller-manager/controller-manager.go
+
+docker: build
+	docker build -t redis-operator:latest images/redis-operator

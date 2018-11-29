@@ -70,6 +70,9 @@ func (rcc *defaultRedisClusterControl) UpdateRedisCluster(rc *v1alpha1.RedisClus
 }
 
 func (rcc *defaultRedisClusterControl) updateRedisCluster(rc *v1alpha1.RedisCluster) error {
+	if rc.Spec.Mode == v1alpha1.MS {
+		return nil
+	}
 
-	return nil
+	return rcc.shardClusterMemberManager.Sync(rc)
 }
