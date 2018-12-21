@@ -1,9 +1,5 @@
 package version
 
-import (
-	"k8s.io/apimachinery/pkg/util/json"
-)
-
 // Info version info
 type Info struct {
 	GitVersion   string `json:"gitVersion"`
@@ -17,9 +13,5 @@ type Info struct {
 
 // String returns info as a human-friendly version string.
 func (info Info) String() string {
-	data, err := json.Marshal(info)
-	if err != nil {
-		return info.GitVersion
-	}
-	return string(data)
+	return info.GitVersion
 }

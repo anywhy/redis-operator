@@ -9,9 +9,7 @@ GOENV  := GO15VENDOREXPERIMENT="1" CGO_ENABLED=0 GOOS=linux GOARCH=amd64
 GO     := $(GOENV) GO111MODULE=on go build -mod=vendor
 GOTEST := CGO_ENABLED=0 go test -v -mod=vendor -cover
 
-LDFLAGS += -X "github.com/anywhy/redis-operator/version.buildDate=$(shell date -u '+%Y-%m-%d %I:%M:%S')"
-LDFLAGS += -X "github.com/anywhy/redis-operator/version.gitCommit=$(shell git rev-parse HEAD)"
-LDFLAGS += -X "github.com/anywhy/redis-operator/version.gitVersion=$(shell git describe --tags --abbrev=14 `git rev-parse HEAD`^{commit})"
+LDFLAGS = $(shell ./hack/version.sh) 
 
 default: build
 
