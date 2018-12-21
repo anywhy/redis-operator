@@ -16,7 +16,10 @@ import (
 var (
 	// scheduler weight is in range 1-100
 	topologySchedulingWeight = map[string]int32{
-		apis.LabelHostname: 100,
+		"region":           10,
+		"zone":             20,
+		"rack":             40,
+		apis.LabelHostname: 80,
 	}
 )
 
