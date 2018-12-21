@@ -48,13 +48,12 @@ func AntiAffinityForPod(namespace string, antiLabels map[string]string) *corev1.
 // Externally we use NodeSelector for simplicity,
 // while internally we convert it to affinity which can express complex scheduling rules
 func AffinityForNodeSelector(namespace string, required bool, antiLabels, selector map[string]string) *corev1.Affinity {
+	if selector == nil {
+		return nil
+	}
 	affinity := &corev1.Affinity{}
 	if antiLabels != nil {
 		affinity.PodAntiAffinity = AntiAffinityForPod(namespace, antiLabels)
-	}
-
-	if selector == nil {
-		return affinity
 	}
 
 	keys := []string{}

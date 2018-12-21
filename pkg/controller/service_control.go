@@ -50,7 +50,7 @@ func (sc *realServiceControl) CreateService(rc *v1alpha1.RedisCluster, svc *core
 		}
 		return nil
 	}
-	sc.recordServiceEvent("create", rc, svc, err)
+	sc.recordServiceEvent("create", rc, rcSvc, err)
 	return err
 }
 

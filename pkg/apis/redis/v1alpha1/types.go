@@ -13,10 +13,10 @@ type ClusterMode string
 type MemberType string
 
 const (
-	// MS means that redis cluster is master/slave
-	MS ClusterMode = "MS"
+	// MSCluster means that redis cluster is master/slave
+	MSCluster ClusterMode = "MS"
 	// ShardCluster means redis cluster is shard mode
-	ShardCluster ClusterMode = "ShardCluster"
+	ShardCluster ClusterMode = "CLUSTER"
 
 	// SentinelMemberType is sentinel container type
 	SentinelMemberType MemberType = "sentinel"
@@ -79,11 +79,12 @@ type RedisInstanceSpec struct {
 	// The number of cluster members (masters)
 	Members int32 `json:"members"`
 	// The number of replicas for each master(redis cluster mode)
-	ReplicationFactor *int32              `json:"replicationFactor,omitempty"`
-	NodeSelector      map[string]string   `json:"nodeSelector,omitempty"`
-	StorageClassName  string              `json:"storageClassName,omitempty"`
-	Tolerations       []corev1.Toleration `json:"tolerations,omitempty"`
-	SchedulerName     string              `json:"schedulerName,omitempty"`
+	ReplicationFactor    *int32              `json:"replicationFactor,omitempty"`
+	NodeSelector         map[string]string   `json:"nodeSelector,omitempty"`
+	NodeSelectorRequired bool                `json:"nodeSelectorRequired,omitempty"`
+	StorageClassName     string              `json:"storageClassName,omitempty"`
+	Tolerations          []corev1.Toleration `json:"tolerations,omitempty"`
+	SchedulerName        string              `json:"schedulerName,omitempty"`
 
 	// Services list non-headless services type used in RedisCluster
 	Services        []Service                            `json:"services,omitempty"`
@@ -102,8 +103,8 @@ type RedisSentinelSpec struct {
 
 // RedisClusterStatus represents the current status of a redis cluster.
 type RedisClusterStatus struct {
-	Redis    *RedisStatus    `json:"redis,omitempty"`
-	Sentinel *SentinelStatus `json:"sentinel,omitempty"`
+	Redis    MSClusterStatus `json:"redis,omitempty"`
+	Sentinel SentinelStatus  `json:"sentinel,omitempty"`
 }
 
 // ContainerSpec is the container spec of a pod
@@ -130,14 +131,14 @@ type Service struct {
 	Type string `json:"type,omitempty"`
 }
 
-// SentinelStatus is
+// SentinelStatus is redis sentinel status
 type SentinelStatus struct {
 	Phase       MemberPhase             `json:"phase,omitempty"`
 	StatefulSet *apps.StatefulSetStatus `json:"statefulset,omitempty"`
 }
 
-// RedisStatus is
-type RedisStatus struct {
+// MSClusterStatus is ms cluster status
+type MSClusterStatus struct {
 	Phase       MemberPhase             `json:"phase,omitempty"`
 	StatefulSet *apps.StatefulSetStatus `json:"statefulset,omitempty"`
 	MasterName  string                  `json:"masterName,omitempty"`

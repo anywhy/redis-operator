@@ -1,0 +1,7 @@
+1. Make sure redis-operator components are running
+   kubectl get pods --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+2. Install CRD
+   kubectl apply -f https://raw.githubusercontent.com/pingcap/tidb-operator/master/manifests/crd.yaml
+   kubectl get customresourcedefinitions
+3. Modify redis-cluster/values.yaml and create a Redis cluster by installing redis-cluster charts
+   helm install redis-cluster

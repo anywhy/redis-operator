@@ -1,0 +1,65 @@
+# Default values for redis-cluster.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Also see monitor.serviceAccount
+# If you set rbac.create to false, you need to provide a value for monitor.serviceAccount
+rbac:
+  create: true
+
+# clusterName is the redis cluster name, it is required and should be unique
+# if multiple clusters are deployed in the same namespace.
+clusterName: demo
+
+# schedulerName must be same with charts/redis-operator/values#scheduler.schedulerName
+# schedulerName: redis-scheduler
+
+# default reclaim policy of a PV
+pvReclaimPolicy: Retain
+
+# services is the service list to expose, default is ClusterIP
+# can be ClusterIP | NodePort | LoadBalancer
+services:
+  - name: redis
+    type: ClusterIP
+
+redis:
+  members: 1
+  image: redis:latest
+  logLevel: info
+  # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
+  # different classes might map to quality-of-service levels, or to backup policies,
+  # or to arbitrary policies determined by the cluster administrators.
+  # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
+  storageClassName: local-storage
+
+  # Image pull policy.
+  imagePullPolicy: IfNotPresent
+
+  # shard cluster replication
+  # replicationFactor: 0
+
+  resources:
+    # limits:
+    #   cpu: 8000m
+    #   memory: 8Gi
+    requests:
+      # cpu: 4000m
+      # memory: 4Gi
+      storage: 1Gi
+  # nodeSelector is used for scheduling pod,
+  # if nodeSelectorRequired is true, all the following labels must be matched
+  nodeSelector: {}
+    # kind: redis
+    # # zone is comma separated availability zone list
+    # zone: cn-bj1-01,cn-bj1-02
+    # # region is comma separated region list
+    # region: cn-bj1
+  # Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
+  # refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
+  tolerations: {}
+  # - key: node-role
+  #   operator: Equal
+  #   value: tidb
+  #   effect: "NoSchedule"
+

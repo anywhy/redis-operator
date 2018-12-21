@@ -82,7 +82,7 @@ function redis_operator::version::ldflags() {
   fi
 
   if [[ -n ${REDIS_VERSION-} ]]; then
-    ldflags+=($(redis_operator::version::ldflag "tidbVersion" "${REDIS_VERSION}"))
+    ldflags+=($(redis_operator::version::ldflag "redisVersion" "${REDIS_VERSION}"))
   fi
 
   # The -ldflags parameter takes a single string, so join the output.

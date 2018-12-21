@@ -38,7 +38,7 @@ func NewMetaManager(
 }
 
 func (mm *metaManager) Sync(rc *v1alpha1.RedisCluster) error {
-	if rc.Spec.Mode == v1alpha1.MS {
+	if rc.Spec.Mode == v1alpha1.MSCluster {
 		return mm.syncRedisMSCluster(rc)
 	}
 	return mm.syncRedisShardCluster(rc)

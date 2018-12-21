@@ -20,6 +20,9 @@ var (
 	controllerKind = v1alpha1.SchemeGroupVersion.WithKind("RedisCluster")
 	// DefaultStorageClassName is the default storageClassName
 	DefaultStorageClassName string
+
+	// ClusterScoped controls whether operator should manage kubernetes cluster wide Redis clusters
+	ClusterScoped bool
 )
 
 // GetOwnerRef returns RedisCluster's OwnerReference

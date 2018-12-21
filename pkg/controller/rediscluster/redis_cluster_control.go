@@ -20,7 +20,7 @@ type ControlInterface interface {
 
 type defaultRedisClusterControl struct {
 	rcControl                 controller.RedisClusterControlInterface
-	msMemberManager           manager.Manager
+	msClusterMemberManager    manager.Manager
 	sentinelMemberManager     manager.Manager
 	shardClusterMemberManager manager.Manager
 	reclaimPolicyManager      manager.Manager
@@ -51,8 +51,8 @@ func NewDefaultRedisClusterControl(
 
 // UpdateRedisCluster executes the core logic loop for a rediscluster.
 func (rcc *defaultRedisClusterControl) UpdateRedisCluster(rc *v1alpha1.RedisCluster) error {
-	oldStatus := rc.Status.DeepCopy()
 	var errs []error
+	oldStatus := rc.Status.DeepCopy()
 
 	err := rcc.updateRedisCluster(rc)
 	if err != nil {
@@ -70,9 +70,18 @@ func (rcc *defaultRedisClusterControl) UpdateRedisCluster(rc *v1alpha1.RedisClus
 }
 
 func (rcc *defaultRedisClusterControl) updateRedisCluster(rc *v1alpha1.RedisCluster) error {
-	if rc.Spec.Mode == v1alpha1.MS {
-		return nil
+	if rc.Spec.Mode == v1alpha1.MSCluster {
+		return rcc.syncMSCluster(rc)
 	}
+	return rcc.syncShardCluster(rc)
+}
 
+// sync ms cluster
+func (rcc *defaultRedisClusterControl) syncMSCluster(rc *v1alpha1.RedisCluster) error {
+	return rcc.msClusterMemberManager.Sync(rc)
+}
+
+// sync shard cluster
+func (rcc *defaultRedisClusterControl) syncShardCluster(rc *v1alpha1.RedisCluster) error {
 	return rcc.shardClusterMemberManager.Sync(rc)
 }

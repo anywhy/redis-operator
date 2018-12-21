@@ -11,12 +11,17 @@ GOTEST := CGO_ENABLED=0 go test -v -mod=vendor -cover
 
 LDFLAGS = $(shell ./hack/version.sh) 
 
+DOCKER_REGISTRY := $(if $(DOCKER_REGISTRY),$(DOCKER_REGISTRY),localhost:5000)
+
 default: build
+
+docker-push: docker
+	docker push "${DOCKER_REGISTRY}/redis-operator:latest"
+
+docker: build
+	docker build --tag "${DOCKER_REGISTRY}/redis-operator:latest" images/redis-operator
 
 build: controller-manager
 
 controller-manager:
 	$(GO) -ldflags '$(LDFLAGS)' -o images/redis-operator/bin/redis-controller-manager cmd/controller-manager/controller-manager.go
-
-docker: build
-	docker build -t redis-operator:latest images/redis-operator

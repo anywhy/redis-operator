@@ -85,24 +85,30 @@ func (rmm *redisMemeberManager) syncRedisServiceForRedisCluster(rc *v1alpha1.Red
 			},
 			Headless: true,
 		},
-		{
-			Name:     "redis-salve",
-			Port:     6379,
-			SvcLabel: func(l label.Label) label.Label { return l.Slave() },
-			MemberName: func(clusterName string) string {
-				return fmt.Sprintf("%s-slave", controller.RedisMemberName(clusterName))
+	}
+
+	if rc.Spec.Mode == v1alpha1.MSCluster && rc.Spec.Redis.Members > 1 {
+		slaveSvcList := []ServiceConfig{
+			{
+				Name:     "redis-salve",
+				Port:     6379,
+				SvcLabel: func(l label.Label) label.Label { return l.Slave() },
+				MemberName: func(clusterName string) string {
+					return fmt.Sprintf("%s-slave", controller.RedisMemberName(clusterName))
+				},
+				Headless: false,
 			},
-			Headless: false,
-		},
-		{
-			Name:     "redis-salve-peer",
-			Port:     6379,
-			SvcLabel: func(l label.Label) label.Label { return l.Slave() },
-			MemberName: func(clusterName string) string {
-				return fmt.Sprintf("%s-slave-peer", controller.RedisMemberName(clusterName))
+			{
+				Name:     "redis-salve-peer",
+				Port:     6379,
+				SvcLabel: func(l label.Label) label.Label { return l.Slave() },
+				MemberName: func(clusterName string) string {
+					return fmt.Sprintf("%s-slave-peer", controller.RedisMemberName(clusterName))
+				},
+				Headless: true,
 			},
-			Headless: true,
-		},
+		}
+		svcList = append(svcList, slaveSvcList...)
 	}
 
 	for _, svc := range svcList {
@@ -134,6 +140,7 @@ func (rmm *redisMemeberManager) syncRedisStatefulSetForRedisCluster(rc *v1alpha1
 				return err
 			}
 			rc.Status.Redis.StatefulSet = &apps.StatefulSetStatus{}
+
 			return nil
 		}
 
@@ -188,7 +195,7 @@ func (rmm *redisMemeberManager) initRedisMaster(rc *v1alpha1.RedisCluster) (*cor
 	ns, rcName := rc.GetNamespace(), rc.GetName()
 
 	masterPodName := ordinalPodName(v1alpha1.RedisMemberType, rcName, 0)
-	if rc.Status.Redis != nil && rc.Status.Redis.MasterName != "" {
+	if &rc.Status.Redis != nil && rc.Status.Redis.MasterName != "" {
 		masterPodName = rc.Status.Redis.MasterName
 	}
 
@@ -220,7 +227,7 @@ func (rmm *redisMemeberManager) syncRedisService(rc *v1alpha1.RedisCluster, svcC
 			if err != nil {
 				return err
 			}
-			return rmm.svcControl.CreateService(rc, oldSvc)
+			return rmm.svcControl.CreateService(rc, newSvc)
 		}
 		return err
 	}
@@ -321,7 +328,7 @@ func (rmm *redisMemeberManager) redislIsUpgrading(set *apps.StatefulSet, rc *v1a
 // redis start commond
 const serverCmd = `
 set -uo pipefail
-ROLE=""
+ROLE="master"
 
 elapseTime=0
 period=1
@@ -332,8 +339,8 @@ while true; do
 
     if [[ ${elapseTime} -ge ${threshold} ]]
     then
-        echo "waiting for redis master role timeout" >&2
-        exit 1
+		echo "waiting for redis master role timeout, start as master node" >&2
+		break
 	fi
 
 	if [[ -e /etc/podinfo/redisrole ]]; then
@@ -344,8 +351,7 @@ done
 
 ARGS=/etc/redis/redis.conf
 
-if [[ X${ROLE} != Xmaster ]]
-then
+if [[ X${ROLE} != Xmaster ]]; then
 	ARGS="${ARGS} --slaveof ${PEER_MASTER_SERVICE_NAME}.${NAMESPACE}.svc 6379"
 fi
 
@@ -409,7 +415,8 @@ func (rmm *redisMemeberManager) getNewRedisStatefulSet(rc *v1alpha1.RedisCluster
 				},
 				Spec: corev1.PodSpec{
 					Affinity: util.AffinityForNodeSelector(ns,
-						true, rediLabel.Labels(),
+						rc.Spec.Redis.NodeSelectorRequired,
+						rediLabel.Labels(),
 						rc.Spec.Redis.NodeSelector),
 					Containers: []corev1.Container{
 						{

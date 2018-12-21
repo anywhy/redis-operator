@@ -1,0 +1,37 @@
+apiVersion: anywhy.github/v1alpha1
+kind: RedisCluster
+metadata:
+  name: {{ .Values.clusterName }}
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: redis-cluster
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+spec:
+  pvReclaimPolicy: {{ .Values.pvReclaimPolicy }}
+  mode: {{.Values.mode | default "MS"}}
+  services:
+{{ toYaml .Values.services | indent 4 }}
+  schedulerName: {{ .Values.schedulerName | default "default-scheduler" }}
+  redis:
+    members: {{ .Values.redis.members }}
+    image: {{ .Values.redis.image }}
+    imagePullPolicy: {{ .Values.redis.imagePullPolicy | default "IfNotPresent" }}
+  {{- if .Values.redis.storageClassName }}
+    storageClassName: {{ .Values.redis.storageClassName }}
+  {{- end }}
+  {{- if .Values.redis.replicationFactor }}
+    replicationFactor: {{ .Values.redis.replicationFactor }}
+  {{- end}}
+  {{- if .Values.redis.resources }}
+{{ toYaml .Values.redis.resources | indent 4 }}
+  {{- end }}
+  {{- if .Values.redis.nodeSelector }}
+    nodeSelector:
+{{ toYaml .Values.redis.nodeSelector | indent 6 }}
+  {{- end }}
+  {{- if .Values.redis.tolerations }}
+    tolerations:
+{{ toYaml .Values.redis.tolerations | indent 4 }}
+  {{- end }}

@@ -7,6 +7,9 @@
 
 bin/
 images/redis-operator/bin/
+images/redis-operator-e2e/bin/
+images/redis-operator-e2e/redis-cluster/
+images/redis-operator-e2e/redis-operator/
 
 *.tar
 tmp/

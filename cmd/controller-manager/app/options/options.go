@@ -46,6 +46,7 @@ func (s *RedisControllerManagerOptions) AddFlags(pflag *pflag.FlagSet) {
 	pflag.StringVar(&s.ConfigFile, "config", s.ConfigFile, "The path to the configuration file. Flags override values in this file.")
 	// pflag.BoolVar(&s.PrintVersion, "version", false, "Show version and quit")
 	pflag.StringVar(&s.Namespace, "namespace", s.Namespace, "The Operator deployment of k8s namespce")
+	pflag.BoolVar(&controller.ClusterScoped, "cluster-scoped", true, "Whether redis-operator should manage kubernetes cluster wide Redis Clusters")
 	pflag.StringVar(&s.Kubeconfig, "kubeconfig", "", "Config k8s config file path")
 	pflag.IntVar(&s.Workers, "workers", s.Workers, "start by threads number for worker")
 	pflag.StringVar(&controller.DefaultStorageClassName, "default-storage-class-name", "standard", "Default storage class name")
