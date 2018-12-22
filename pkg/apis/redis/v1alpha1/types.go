@@ -94,8 +94,8 @@ type RedisInstanceSpec struct {
 // RedisSentinelSpec redis sentinel attributes
 type RedisSentinelSpec struct {
 	ContainerSpec
-	Replicas         int32               `json:"replicas"`
-	Quorum           int32               `json:"quorum"`
+	Replicas         int32               `json:"replicas,omitempty"`
+	Quorum           int32               `json:"quorum,omitempty"`
 	NodeSelector     map[string]string   `json:"nodeSelector,omitempty"`
 	StorageClassName string              `json:"storageClassName,omitempty"`
 	Tolerations      []corev1.Toleration `json:"tolerations,omitempty"`
@@ -109,7 +109,7 @@ type RedisClusterStatus struct {
 
 // ContainerSpec is the container spec of a pod
 type ContainerSpec struct {
-	Image           string               `json:"image"`
+	Image           string               `json:"image,omitempty"`
 	ImagePullPolicy corev1.PullPolicy    `json:"imagePullPolicy,omitempty"`
 	Requests        *ResourceRequirement `json:"requests,omitempty"`
 	Limits          *ResourceRequirement `json:"limits,omitempty"`

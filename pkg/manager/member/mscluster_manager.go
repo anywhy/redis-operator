@@ -343,7 +343,7 @@ while true; do
 		break
 	fi
 
-	if [[ -e /etc/podinfo/redisrole ]]; then
+	if [[ -s /etc/podinfo/redisrole ]]; then
 		ROLE=$(cat /etc/podinfo/redisrole)
 	fi
 	

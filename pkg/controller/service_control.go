@@ -42,15 +42,15 @@ func NewRealServiceControl(kubeCli kubernetes.Interface, svcLister corelisters.S
 
 // CreateService create a Service in a RedisCluster.
 func (sc *realServiceControl) CreateService(rc *v1alpha1.RedisCluster, svc *corev1.Service) error {
-	rcSvc, err := sc.kubeCli.CoreV1().Services(rc.Namespace).Create(svc)
+	_, err := sc.kubeCli.CoreV1().Services(rc.Namespace).Create(svc)
 	if apierrors.IsAlreadyExists(err) {
-		if !metav1.IsControlledBy(rcSvc, rc) {
-			err := fmt.Errorf(MessageResourceExists, "Service", rcSvc.Namespace, rcSvc.Name)
-			sc.recordServiceEvent("create", rc, rcSvc, err)
+		if !metav1.IsControlledBy(svc, rc) {
+			err := fmt.Errorf(MessageResourceExists, "Service", svc.Namespace, svc.Name)
+			sc.recordServiceEvent("create", rc, svc, err)
 		}
 		return nil
 	}
-	sc.recordServiceEvent("create", rc, rcSvc, err)
+	sc.recordServiceEvent("create", rc, svc, err)
 	return err
 }
 
