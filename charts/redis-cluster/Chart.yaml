@@ -1,11 +1,11 @@
 apiVersion: v1
 description: redis-operator Helm chart for Kubernetes
-name: redis-operator
+name: redis-cluster
 version: 0.1.0
 home: https://github.com/anywhy/redis-operator
 sources:
   - https://github.com/anywhy/redis-operator
 keywords:
-  - operator
+  - redis-cluster
   - redis
   - kv
