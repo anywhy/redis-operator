@@ -368,7 +368,6 @@ func (rmm *redisMemeberManager) getNewRedisStatefulSet(rc *v1alpha1.RedisCluster
 	volMounts := []corev1.VolumeMount{
 		podMount,
 		{Name: "configfile", MountPath: "/etc/redis"},
-		// {Name: "log-dir", MountPath: "/var/log/sentinel"},
 	}
 	vols := []corev1.Volume{
 		podVolume,
