@@ -28,8 +28,8 @@ type FakeRedisV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeRedisV1alpha1) RedisClusters(namespace string) v1alpha1.RedisClusterInterface {
-	return &FakeRedisClusters{c, namespace}
+func (c *FakeRedisV1alpha1) Redises(namespace string) v1alpha1.RedisInterface {
+	return &FakeRedises{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

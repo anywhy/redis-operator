@@ -2434,7 +2434,7 @@ function dind::create_mount_point {
 
 function dind::create_e2e_env {
    [[ ! -e ${DIND_ROOT}/../crd.yaml ]] && return
-   dind::step "Create RedisCluster CRD object"
+   dind::step "Create Redis CRD object"
   "${kubectl}" apply -f ${DIND_ROOT}/../crd.yaml
    dind::step "Create e2e test namespace"
   "${kubectl}" create ns redis-operator-e2e 2>/dev/null || true

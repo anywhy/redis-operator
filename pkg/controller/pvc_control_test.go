@@ -24,7 +24,7 @@ import (
 func TestPVCControlUpdatePVCSuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
 	fakeClient, pvcLister, _, recorder := newFakeClientAndRecorder()
-	rc := newRedisCluster("demo")
+	rc := newRedis("demo")
 	pvc := newPVC(rc)
 	control := NewRealPVCControl(fakeClient, recorder, pvcLister)
 	fakeClient.AddReactor("update", "persistentvolumeclaims", func(action core.Action) (bool, runtime.Object, error) {
@@ -42,7 +42,7 @@ func TestPVCControlUpdatePVCSuccess(t *testing.T) {
 func TestPVCControlUpdatePVCFaild(t *testing.T) {
 	g := NewGomegaWithT(t)
 	fakeClient, pvcLister, _, recorder := newFakeClientAndRecorder()
-	rc := newRedisCluster("demo")
+	rc := newRedis("demo")
 	pvc := newPVC(rc)
 	control := NewRealPVCControl(fakeClient, recorder, pvcLister)
 	fakeClient.AddReactor("update", "persistentvolumeclaims", func(action core.Action) (bool, runtime.Object, error) {
@@ -59,7 +59,7 @@ func TestPVCControlUpdatePVCFaild(t *testing.T) {
 func TestPVCControlUpdatePVCWithPodSuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
 	fakeClient, pvcLister, _, recorder := newFakeClientAndRecorder()
-	rc := newRedisCluster("demo")
+	rc := newRedis("demo")
 	pvc := newPVC(rc)
 	control := NewRealPVCControl(fakeClient, recorder, pvcLister)
 	fakeClient.AddReactor("update", "persistentvolumeclaims", func(action core.Action) (bool, runtime.Object, error) {
@@ -80,7 +80,7 @@ func TestPVCControlUpdatePVCWithPodSuccess(t *testing.T) {
 func TestPVCControlUpdatePVCConflictSuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
 	fakeClient, pvcLister, _, recorder := newFakeClientAndRecorder()
-	rc := newRedisCluster("demo")
+	rc := newRedis("demo")
 	pvc := newPVC(rc)
 	control := NewRealPVCControl(fakeClient, recorder, pvcLister)
 	conflict := false
@@ -103,7 +103,7 @@ func TestPVCControlUpdatePVCConflictSuccess(t *testing.T) {
 func TestPVCControlDeletePVCSuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
 	fakeClient, pvcLister, _, recorder := newFakeClientAndRecorder()
-	rc := newRedisCluster("demo")
+	rc := newRedis("demo")
 	pvc := newPVC(rc)
 	control := NewRealPVCControl(fakeClient, recorder, pvcLister)
 	fakeClient.AddReactor("delete", "persistentvolumeclaims", func(action core.Action) (bool, runtime.Object, error) {
@@ -121,7 +121,7 @@ func TestPVCControlDeletePVCSuccess(t *testing.T) {
 func TestPVCControlDeletePVCFaild(t *testing.T) {
 	g := NewGomegaWithT(t)
 	fakeClient, pvcLister, _, recorder := newFakeClientAndRecorder()
-	rc := newRedisCluster("demo")
+	rc := newRedis("demo")
 	pvc := newPVC(rc)
 	control := NewRealPVCControl(fakeClient, recorder, pvcLister)
 	fakeClient.AddReactor("delete", "persistentvolumeclaims", func(action core.Action) (bool, runtime.Object, error) {
@@ -143,7 +143,7 @@ func newFakeClientAndRecorder() (*fake.Clientset, corelisters.PersistentVolumeCl
 	return kubeCli, pvcInformer.Lister(), pvcInformer.Informer().GetIndexer(), recorder
 }
 
-func newPVC(rc *v1alpha1.RedisCluster) *corev1.PersistentVolumeClaim {
+func newPVC(rc *v1alpha1.Redis) *corev1.PersistentVolumeClaim {
 	return &corev1.PersistentVolumeClaim{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "PersistentVolumeClaim",

@@ -27,7 +27,7 @@ import (
 
 type RedisV1alpha1Interface interface {
 	RESTClient() rest.Interface
-	RedisClustersGetter
+	RedisesGetter
 }
 
 // RedisV1alpha1Client is used to interact with features provided by the redis.anywhy.github group.
@@ -35,8 +35,8 @@ type RedisV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *RedisV1alpha1Client) RedisClusters(namespace string) RedisClusterInterface {
-	return newRedisClusters(c, namespace)
+func (c *RedisV1alpha1Client) Redises(namespace string) RedisInterface {
+	return newRedises(c, namespace)
 }
 
 // NewForConfig creates a new RedisV1alpha1Client for the given config.

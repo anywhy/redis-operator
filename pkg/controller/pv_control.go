@@ -18,10 +18,10 @@ import (
 	"github.com/anywhy/redis-operator/pkg/label"
 )
 
-// PVControlInterface manages PVs used in RedisCluster
+// PVControlInterface manages PVs used in Redis
 type PVControlInterface interface {
-	UpdatePV(*v1alpha1.RedisCluster, *corev1.PersistentVolume) (*corev1.PersistentVolume, error)
-	PatchPVReclaimPolicy(*v1alpha1.RedisCluster, *corev1.PersistentVolume, corev1.PersistentVolumeReclaimPolicy) error
+	UpdatePV(*v1alpha1.Redis, *corev1.PersistentVolume) (*corev1.PersistentVolume, error)
+	PatchPVReclaimPolicy(*v1alpha1.Redis, *corev1.PersistentVolume, corev1.PersistentVolumeReclaimPolicy) error
 }
 
 type realPVControl struct {
@@ -46,8 +46,8 @@ func NewRealPVControl(
 	}
 }
 
-// UpdatePV update a pv in a RedisCluster.
-func (rpc *realPVControl) UpdatePV(rc *v1alpha1.RedisCluster, pv *corev1.PersistentVolume) (*corev1.PersistentVolume, error) {
+// UpdatePV update a pv in a Redis.
+func (rpc *realPVControl) UpdatePV(rc *v1alpha1.Redis, pv *corev1.PersistentVolume) (*corev1.PersistentVolume, error) {
 	ns, rcName := rc.GetNamespace(), rc.GetName()
 	if pv.Labels == nil {
 		pv.Labels = make(map[string]string)
@@ -58,7 +58,7 @@ func (rpc *realPVControl) UpdatePV(rc *v1alpha1.RedisCluster, pv *corev1.Persist
 	pvName := pv.GetName()
 	pvcRef := pv.Spec.ClaimRef
 	if pvcRef == nil {
-		glog.Warningf("PV: [%s] doesn't have a ClaimRef, skipping, RedisCluster: %s/%s", pvName, ns, rcName)
+		glog.Warningf("PV: [%s] doesn't have a ClaimRef, skipping, Redis: %s/%s", pvName, ns, rcName)
 		return pv, nil
 	}
 	pvcName := pvcRef.Name
@@ -67,7 +67,7 @@ func (rpc *realPVControl) UpdatePV(rc *v1alpha1.RedisCluster, pv *corev1.Persist
 		if !apierrs.IsNotFound(err) {
 			return pv, err
 		}
-		glog.Warningf("PV: [%s]'s PVC: [%s/%s] doesn't exist, skipping. RedisCluster: %s", pvName, ns, pvcName, rcName)
+		glog.Warningf("PV: [%s]'s PVC: [%s/%s] doesn't exist, skipping. Redis: %s", pvName, ns, pvcName, rcName)
 		return pv, nil
 	}
 
@@ -79,7 +79,7 @@ func (rpc *realPVControl) UpdatePV(rc *v1alpha1.RedisCluster, pv *corev1.Persist
 		pv.Labels[label.ManagedByLabelKey] == pvc.Labels[label.ManagedByLabelKey] &&
 		pv.Labels[label.InstanceLabelKey] == pvc.Labels[label.InstanceLabelKey] &&
 		pv.Annotations[label.AnnPodNameKey] == podName {
-		glog.V(4).Infof("pv %s already has labels and annotations synced, skipping. RedisCluster: %s/%s", pvName, ns, rcName)
+		glog.V(4).Infof("pv %s already has labels and annotations synced, skipping. Redis: %s/%s", pvName, ns, rcName)
 		return pv, nil
 	}
 
@@ -98,10 +98,10 @@ func (rpc *realPVControl) UpdatePV(rc *v1alpha1.RedisCluster, pv *corev1.Persist
 		var updateErr error
 		updatePV, updateErr = rpc.kubeCli.CoreV1().PersistentVolumes().Update(pv)
 		if updateErr == nil {
-			glog.Infof("PV: [%s] updated successfully, RedisCluster: %s/%s", pvName, ns, rcName)
+			glog.Infof("PV: [%s] updated successfully, Redis: %s/%s", pvName, ns, rcName)
 			return nil
 		}
-		glog.Errorf("failed to update PV: [%s], RedisCluster %s/%s, error: %v", pvName, ns, rcName, err)
+		glog.Errorf("failed to update PV: [%s], Redis %s/%s, error: %v", pvName, ns, rcName, err)
 
 		if updated, err := rpc.pvLister.Get(pvName); err == nil {
 			// make a copy so we don't mutate the shared cache
@@ -118,8 +118,8 @@ func (rpc *realPVControl) UpdatePV(rc *v1alpha1.RedisCluster, pv *corev1.Persist
 	return updatePV, err
 }
 
-// PatchPVReclaimPolicy update a pvclaim in a RedisCluster.
-func (rpc *realPVControl) PatchPVReclaimPolicy(rc *v1alpha1.RedisCluster, pv *corev1.PersistentVolume,
+// PatchPVReclaimPolicy update a pvclaim in a Redis.
+func (rpc *realPVControl) PatchPVReclaimPolicy(rc *v1alpha1.Redis, pv *corev1.PersistentVolume,
 	reclaimPolicy corev1.PersistentVolumeReclaimPolicy) error {
 	pvName := pv.GetName()
 	patchBytes := []byte(fmt.Sprintf(`{"spec":{"persistentVolumeReclaimPolicy":"%s"}}`, reclaimPolicy))
@@ -132,16 +132,16 @@ func (rpc *realPVControl) PatchPVReclaimPolicy(rc *v1alpha1.RedisCluster, pv *co
 	return err
 }
 
-func (rpc *realPVControl) recordPVEvent(verb string, tc *v1alpha1.RedisCluster, pvName string, err error) {
+func (rpc *realPVControl) recordPVEvent(verb string, tc *v1alpha1.Redis, pvName string, err error) {
 	tcName := tc.GetName()
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
-		msg := fmt.Sprintf("%s PV %s in RedisCluster %s successful",
+		msg := fmt.Sprintf("%s PV %s in Redis %s successful",
 			strings.ToLower(verb), pvName, tcName)
 		rpc.recorder.Event(tc, corev1.EventTypeNormal, reason, msg)
 	} else {
 		reason := fmt.Sprintf("Failed%s", strings.Title(verb))
-		msg := fmt.Sprintf("%s PV %s in RedisCluster %s failed error: %s",
+		msg := fmt.Sprintf("%s PV %s in Redis %s failed error: %s",
 			strings.ToLower(verb), pvName, tcName, err)
 		rpc.recorder.Event(tc, corev1.EventTypeWarning, reason, msg)
 	}

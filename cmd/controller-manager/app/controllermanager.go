@@ -20,7 +20,7 @@ import (
 	"github.com/anywhy/redis-operator/cmd/controller-manager/app/options"
 	"github.com/anywhy/redis-operator/pkg/client/clientset/versioned"
 	informers "github.com/anywhy/redis-operator/pkg/client/informers/externalversions"
-	"github.com/anywhy/redis-operator/pkg/controller/rediscluster"
+	"github.com/anywhy/redis-operator/pkg/controller/redis"
 	"github.com/anywhy/redis-operator/version"
 )
 
@@ -86,7 +86,7 @@ func Run(s *options.RedisControllerManagerOptions, stop <-chan struct{}) error {
 	}
 
 	// redis-controller
-	rcController := rediscluster.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
+	rcController := Redis.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 	go informerFactory.Start(stop)
 	go kubeInformerFactory.Start(stop)
 	onStarted := func(stopCh <-chan struct{}) {

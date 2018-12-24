@@ -19,7 +19,7 @@ func TestServiceControlCreateStatefullSet(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 
-	rc := newRedisCluster("redis-demo")
+	rc := newRedis("redis-demo")
 	ss := newStatefulSet(rc, "group1")
 	fakeClient := &fake.Clientset{}
 	control := NewRealStatefuSetControl(fakeClient, nil, recorder)
@@ -40,7 +40,7 @@ func TestServiceControlCreateStatefullSetExits(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 
-	rc := newRedisCluster("redis-demo")
+	rc := newRedis("redis-demo")
 	ss := newStatefulSet(rc, "group1")
 	fakeClient := &fake.Clientset{}
 	control := NewRealStatefuSetControl(fakeClient, nil, recorder)
@@ -56,8 +56,8 @@ func TestServiceControlCreateStatefullSetExitsNotConrollBySameCluster(t *testing
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 
-	rc := newRedisCluster("redis-demo")
-	rc1 := newRedisCluster("redis-demo1")
+	rc := newRedis("redis-demo")
+	rc1 := newRedis("redis-demo1")
 
 	rc.UID = "123"
 	rc1.UID = "abc"
@@ -73,14 +73,14 @@ func TestServiceControlCreateStatefullSetExitsNotConrollBySameCluster(t *testing
 
 	events := collectEvents(recorder.Events)
 	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring("already exists and is not managed by RedisCluster"))
+	g.Expect(events[0]).To(ContainSubstring("already exists and is not managed by Redis"))
 }
 
 func TestServiceControlCreateStatefullSetFailed(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 
-	rc := newRedisCluster("redis-demo")
+	rc := newRedis("redis-demo")
 
 	ss := newStatefulSet(rc, "group1")
 	fakeClient := &fake.Clientset{}
@@ -100,7 +100,7 @@ func TestServiceControlUpdateStatefullSet(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 
-	rc := newRedisCluster("redis-demo")
+	rc := newRedis("redis-demo")
 
 	ss := newStatefulSet(rc, "group1")
 	ss.Spec.ServiceName = "aa"
@@ -123,7 +123,7 @@ func TestServiceControlUpdateStatefullSetConflictSuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 
-	rc := newRedisCluster("redis-demo")
+	rc := newRedis("redis-demo")
 	ss := newStatefulSet(rc, "group1")
 	ss.Spec.ServiceName = "aa"
 
@@ -159,7 +159,7 @@ func TestServiceControlDeleteStatefullSet(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 
-	rc := newRedisCluster("redis-demo")
+	rc := newRedis("redis-demo")
 
 	ss := newStatefulSet(rc, "group1")
 	fakeClient := &fake.Clientset{}
@@ -179,7 +179,7 @@ func TestServiceControlDeleteStatefullSetFaild(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 
-	rc := newRedisCluster("redis-demo")
+	rc := newRedis("redis-demo")
 
 	ss := newStatefulSet(rc, "group1")
 	fakeClient := &fake.Clientset{}

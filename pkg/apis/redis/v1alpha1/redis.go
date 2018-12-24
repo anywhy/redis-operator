@@ -5,6 +5,6 @@ func (mt MemberType) String() string {
 }
 
 // RedisUpgrading return redis is Upgrading status
-func (rc *RedisCluster) RedisUpgrading() bool {
-	return rc.Status.Redis.Phase == UpgradePhase
+func (rc *Redis) RedisUpgrading() bool {
+	return rc.Status.Replica.Phase == UpgradePhase
 }

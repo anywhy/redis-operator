@@ -31,59 +31,59 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-// RedisClusterInformer provides access to a shared informer and lister for
-// RedisClusters.
-type RedisClusterInformer interface {
+// RedisInformer provides access to a shared informer and lister for
+// Redises.
+type RedisInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.RedisClusterLister
+	Lister() v1alpha1.RedisLister
 }
 
-type redisClusterInformer struct {
+type redisInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 	namespace        string
 }
 
-// NewRedisClusterInformer constructs a new informer for RedisCluster type.
+// NewRedisInformer constructs a new informer for Redis type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewRedisClusterInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredRedisClusterInformer(client, namespace, resyncPeriod, indexers, nil)
+func NewRedisInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredRedisInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
-// NewFilteredRedisClusterInformer constructs a new informer for RedisCluster type.
+// NewFilteredRedisInformer constructs a new informer for Redis type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredRedisClusterInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredRedisInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.RedisV1alpha1().RedisClusters(namespace).List(options)
+				return client.RedisV1alpha1().Redises(namespace).List(options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.RedisV1alpha1().RedisClusters(namespace).Watch(options)
+				return client.RedisV1alpha1().Redises(namespace).Watch(options)
 			},
 		},
-		&redis_v1alpha1.RedisCluster{},
+		&redis_v1alpha1.Redis{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
-func (f *redisClusterInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredRedisClusterInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+func (f *redisInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	return NewFilteredRedisInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
-func (f *redisClusterInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&redis_v1alpha1.RedisCluster{}, f.defaultInformer)
+func (f *redisInformer) Informer() cache.SharedIndexInformer {
+	return f.factory.InformerFor(&redis_v1alpha1.Redis{}, f.defaultInformer)
 }
 
-func (f *redisClusterInformer) Lister() v1alpha1.RedisClusterLister {
-	return v1alpha1.NewRedisClusterLister(f.Informer().GetIndexer())
+func (f *redisInformer) Lister() v1alpha1.RedisLister {
+	return v1alpha1.NewRedisLister(f.Informer().GetIndexer())
 }

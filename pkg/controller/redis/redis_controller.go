@@ -1,4 +1,4 @@
-package rediscluster
+package Redis
 
 import (
 	"fmt"
@@ -29,9 +29,9 @@ import (
 )
 
 // controllerKind contains the schema.GroupVersionKind for this controller type.
-var controllerKind = v1alpha1.SchemeGroupVersion.WithKind("RedisCluster")
+var controllerKind = v1alpha1.SchemeGroupVersion.WithKind("Redis")
 
-// Controller controls redisclusters.
+// Controller controls Rediss.
 type Controller struct {
 	// kubernetes client interface
 	kubeClient kubernetes.Interface
@@ -41,9 +41,9 @@ type Controller struct {
 	// Abstracted out for testing.
 	control ControlInterface
 
-	// rcLister is able to list/get redisclusters from a shared informer's store
-	rcLister listers.RedisClusterLister
-	// rcListerSynced returns true if the redisclusters shared informer has synced at least once
+	// rcLister is able to list/get Rediss from a shared informer's store
+	rcLister listers.RedisLister
+	// rcListerSynced returns true if the Rediss shared informer has synced at least once
 	rcListerSynced cache.InformerSynced
 
 	// setLister is able to list/get stateful sets from a shared informer's store
@@ -51,11 +51,11 @@ type Controller struct {
 	// setListerSynced returns true if the statefulset shared informer has synced at least once
 	setListerSynced cache.InformerSynced
 
-	// redisclusters that need to be synced.
+	// Rediss that need to be synced.
 	queue workqueue.RateLimitingInterface
 }
 
-// NewController creates a rediscluster controller.
+// NewController creates a Redis controller.
 func NewController(
 	kubeCli kubernetes.Interface,
 	cli versioned.Interface,
@@ -66,9 +66,9 @@ func NewController(
 	eventBroadcaster.StartLogging(glog.Infof)
 	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
 		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
-	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "rediscluster"})
+	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "Redis"})
 
-	rcInformer := informerFactory.Redis().V1alpha1().RedisClusters()
+	rcInformer := informerFactory.Redis().V1alpha1().Redises()
 	setInformer := kubeInformerFactory.Apps().V1beta1().StatefulSets()
 	svcInformer := kubeInformerFactory.Core().V1().Services()
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
@@ -76,28 +76,28 @@ func NewController(
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 	// nodeInformer := kubeInformerFactory.Core().V1().Nodes()
 
-	rcControl := controller.NewRealRedisClusterControl(cli, rcInformer.Lister(), recorder)
+	rcControl := controller.NewRealRedisControl(cli, rcInformer.Lister(), recorder)
 	setControl := controller.NewRealStatefuSetControl(kubeCli, setInformer.Lister(), recorder)
 	svcControl := controller.NewRealServiceControl(kubeCli, svcInformer.Lister(), recorder)
 	podControl := controller.NewRealPodControl(kubeCli, podInformer.Lister(), recorder)
 	pvcControl := controller.NewRealPVCControl(kubeCli, recorder, pvcInformer.Lister())
 	pvControl := controller.NewRealPVControl(kubeCli, pvcInformer.Lister(), pvInformer.Lister(), recorder)
 
-	redisScaler := mm.NewRedisScaler(pvcInformer.Lister(), pvcControl)
+	replicaScaler := mm.NewReplicaScaler(pvcInformer.Lister(), pvcControl)
 
 	rcc := &Controller{
 		kubeClient: kubeCli,
 		cli:        cli,
-		control: NewDefaultRedisClusterControl(
+		control: NewDefaultRedisControl(
 			rcControl,
-			mm.NewRedisMSMemberManager(
+			mm.NewReplicaMemberManager(
 				setControl,
 				svcControl,
 				svcInformer.Lister(),
 				podInformer.Lister(),
 				podControl,
 				setInformer.Lister(),
-				redisScaler),
+				replicaScaler),
 			mm.NewSentinelMemberManager(
 				setControl,
 				svcControl,
@@ -118,16 +118,16 @@ func NewController(
 		),
 		queue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.DefaultControllerRateLimiter(),
-			"rediscluster",
+			"Redis",
 		),
 	}
 
 	rcInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: rcc.enqueueRedisCluster,
+		AddFunc: rcc.enqueueRedis,
 		UpdateFunc: func(old, cur interface{}) {
-			rcc.enqueueRedisCluster(cur)
+			rcc.enqueueRedis(cur)
 		},
-		DeleteFunc: rcc.enqueueRedisCluster,
+		DeleteFunc: rcc.enqueueRedis,
 	})
 	rcc.rcLister = rcInformer.Lister()
 	rcc.rcListerSynced = rcInformer.Informer().HasSynced
@@ -145,13 +145,13 @@ func NewController(
 	return rcc
 }
 
-// Run runs the rediscluster controller.
+// Run runs the Redis controller.
 func (rcc *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer rcc.queue.ShutDown()
 
-	glog.Info("Starting rediscluster controller")
-	defer glog.Info("Shutting down rediscluster controller")
+	glog.Info("Starting Redis controller")
+	defer glog.Info("Shutting down Redis controller")
 
 	if !cache.WaitForCacheSync(stopCh, rcc.rcListerSynced, rcc.setListerSynced) {
 		return
@@ -180,7 +180,7 @@ func (rcc *Controller) processNextWorkItem() bool {
 	}
 	defer rcc.queue.Done(key)
 	if err := rcc.sync(key.(string)); err != nil {
-		utilruntime.HandleError(fmt.Errorf("RedisCluster: %v, sync failed %v, requeuing", key.(string), err))
+		utilruntime.HandleError(fmt.Errorf("Redis: %v, sync failed %v, requeuing", key.(string), err))
 		rcc.queue.AddRateLimited(key)
 	} else {
 		rcc.queue.Forget(key)
@@ -188,35 +188,35 @@ func (rcc *Controller) processNextWorkItem() bool {
 	return true
 }
 
-// sync syncs the given rediscluster.
+// sync syncs the given Redis.
 func (rcc *Controller) sync(key string) error {
 	startTime := time.Now()
 	defer func() {
-		glog.V(4).Infof("Finished syncing RedisCluster %q (%v)", key, time.Since(startTime))
+		glog.V(4).Infof("Finished syncing Redis %q (%v)", key, time.Since(startTime))
 	}()
 
 	ns, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		return err
 	}
-	rc, err := rcc.rcLister.RedisClusters(ns).Get(name)
+	rc, err := rcc.rcLister.Redises(ns).Get(name)
 	if errors.IsNotFound(err) {
-		glog.Infof("RedisCluster has been deleted %v", key)
+		glog.Infof("Redis has been deleted %v", key)
 		return nil
 	}
 	if err != nil {
 		return err
 	}
 
-	return rcc.syncRedisCluster(rc.DeepCopy())
+	return rcc.syncRedis(rc.DeepCopy())
 }
 
-func (rcc *Controller) syncRedisCluster(rc *v1alpha1.RedisCluster) error {
-	return rcc.control.UpdateRedisCluster(rc)
+func (rcc *Controller) syncRedis(rc *v1alpha1.Redis) error {
+	return rcc.control.UpdateRedis(rc)
 }
 
-// enqueueRedisCluster enqueues the given rediscluster in the work queue.
-func (rcc *Controller) enqueueRedisCluster(obj interface{}) {
+// enqueueRedis enqueues the given Redis in the work queue.
+func (rcc *Controller) enqueueRedis(obj interface{}) {
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("Cound't get key for object %+v: %v", obj, err))
@@ -238,15 +238,15 @@ func (rcc *Controller) addStatefulSet(obj interface{}) {
 	}
 
 	// If it has a ControllerRef, that's all that matters.
-	rc := rcc.resolveRedisClusterFromSet(ns, set)
+	rc := rcc.resolveRedisFromSet(ns, set)
 	if rc == nil {
 		return
 	}
-	glog.Infof("StatefuSet %s/%s created, RedisCluster: %s/%s", ns, setName, ns, rc.Name)
-	rcc.enqueueRedisCluster(rc)
+	glog.Infof("StatefuSet %s/%s created, Redis: %s/%s", ns, setName, ns, rc.Name)
+	rcc.enqueueRedis(rc)
 }
 
-// updateStatefuSet adds the rediscluster for the current and old statefulsets to the sync queue.
+// updateStatefuSet adds the Redis for the current and old statefulsets to the sync queue.
 func (rcc *Controller) updateStatefuSet(old, cur interface{}) {
 	curSet := cur.(*apps.StatefulSet)
 	oldSet := old.(*apps.StatefulSet)
@@ -258,15 +258,15 @@ func (rcc *Controller) updateStatefuSet(old, cur interface{}) {
 	}
 
 	// If it has a ControllerRef, that's all that matters.
-	rc := rcc.resolveRedisClusterFromSet(ns, curSet)
+	rc := rcc.resolveRedisFromSet(ns, curSet)
 	if rc == nil {
 		return
 	}
 	glog.Infof("StatefulSet %s/%s updated, %+v -> %+v.", ns, setName, oldSet.Spec, curSet.Spec)
-	rcc.enqueueRedisCluster(rc)
+	rcc.enqueueRedis(rc)
 }
 
-// deleteStatefulSet enqueues the rediscluster for the statefulset accounting for deletion tombstones.
+// deleteStatefulSet enqueues the Redis for the statefulset accounting for deletion tombstones.
 func (rcc *Controller) deleteStatefulSet(obj interface{}) {
 	set, ok := obj.(*apps.StatefulSet)
 	ns := set.GetNamespace()
@@ -288,19 +288,19 @@ func (rcc *Controller) deleteStatefulSet(obj interface{}) {
 		}
 	}
 
-	// If it has a RedisCluster, that's all that matters.
-	rc := rcc.resolveRedisClusterFromSet(ns, set)
+	// If it has a Redis, that's all that matters.
+	rc := rcc.resolveRedisFromSet(ns, set)
 	if rc == nil {
 		return
 	}
 	glog.Infof("StatefulSet %s/%s deleted through %v.", ns, setName, utilruntime.GetCaller())
-	rcc.enqueueRedisCluster(rc)
+	rcc.enqueueRedis(rc)
 }
 
-// resolveRedisClusterFromSet returns the RedisCluster by a StatefulSet,
-// or nil if the StatefulSet could not be resolved to a matching RedisCluster
+// resolveRedisFromSet returns the Redis by a StatefulSet,
+// or nil if the StatefulSet could not be resolved to a matching Redis
 // of the correct Kind.
-func (rcc *Controller) resolveRedisClusterFromSet(namespace string, set *apps.StatefulSet) *v1alpha1.RedisCluster {
+func (rcc *Controller) resolveRedisFromSet(namespace string, set *apps.StatefulSet) *v1alpha1.Redis {
 	controllerRef := metav1.GetControllerOf(set)
 	if controllerRef == nil {
 		return nil
@@ -311,7 +311,7 @@ func (rcc *Controller) resolveRedisClusterFromSet(namespace string, set *apps.St
 	if controllerRef.Kind != controllerKind.Kind {
 		return nil
 	}
-	rc, err := rcc.rcLister.RedisClusters(namespace).Get(controllerRef.Name)
+	rc, err := rcc.rcLister.Redises(namespace).Get(controllerRef.Name)
 	if err != nil {
 		return nil
 	}

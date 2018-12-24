@@ -20,9 +20,9 @@ import (
 
 // DeploymentControlInterface defines the interface that RedisController uses to create, update, and delete deploy,
 type DeploymentControlInterface interface {
-	CreateDeployment(*v1alpha1.RedisCluster, *extv1.Deployment) error
-	UpdateDeployment(*v1alpha1.RedisCluster, *extv1.Deployment) (*extv1.Deployment, error)
-	DeleteDeployment(*v1alpha1.RedisCluster, *extv1.Deployment) error
+	CreateDeployment(*v1alpha1.Redis, *extv1.Deployment) error
+	UpdateDeployment(*v1alpha1.Redis, *extv1.Deployment) (*extv1.Deployment, error)
+	DeleteDeployment(*v1alpha1.Redis, *extv1.Deployment) error
 }
 
 // NewDeploymentControl returns a DeploymentControlInterface
@@ -42,8 +42,8 @@ type realDeploymentControl struct {
 	recorder     record.EventRecorder
 }
 
-// CreateDeployment create a Deployment in a RedisCluster.
-func (rdc *realDeploymentControl) CreateDeployment(rc *v1alpha1.RedisCluster, dep *extv1.Deployment) error {
+// CreateDeployment create a Deployment in a Redis.
+func (rdc *realDeploymentControl) CreateDeployment(rc *v1alpha1.Redis, dep *extv1.Deployment) error {
 	newDep, err := rdc.kubeCli.ExtensionsV1beta1().Deployments(rc.Namespace).Create(dep)
 	if apierrors.IsAlreadyExists(err) {
 		if !metav1.IsControlledBy(newDep, rc) {
@@ -57,8 +57,8 @@ func (rdc *realDeploymentControl) CreateDeployment(rc *v1alpha1.RedisCluster, de
 	return err
 }
 
-// UpdateDeployment update a Deployment in a RedisCluster.
-func (rdc *realDeploymentControl) UpdateDeployment(rc *v1alpha1.RedisCluster, dep *extv1.Deployment) (*extv1.Deployment, error) {
+// UpdateDeployment update a Deployment in a Redis.
+func (rdc *realDeploymentControl) UpdateDeployment(rc *v1alpha1.Redis, dep *extv1.Deployment) (*extv1.Deployment, error) {
 	ns := rc.GetNamespace()
 	rcName := rc.GetName()
 	depName := dep.GetName()
@@ -69,10 +69,10 @@ func (rdc *realDeploymentControl) UpdateDeployment(rc *v1alpha1.RedisCluster, de
 		var updateErr error
 		updatedDep, updateErr = rdc.kubeCli.ExtensionsV1beta1().Deployments(ns).Update(dep)
 		if updateErr == nil {
-			glog.Infof("RedisCluster: [%s/%s]'s Deployment: [%s/%s] updated successfully", ns, rcName, ns, depName)
+			glog.Infof("Redis: [%s/%s]'s Deployment: [%s/%s] updated successfully", ns, rcName, ns, depName)
 			return nil
 		}
-		glog.Errorf("failed to update RedisCluster: [%s/%s]'s Deployment: [%s/%s], error: %v", ns, rcName, ns, depName, updateErr)
+		glog.Errorf("failed to update Redis: [%s/%s]'s Deployment: [%s/%s], error: %v", ns, rcName, ns, depName, updateErr)
 
 		if updated, err := rdc.deployLister.Deployments(ns).Get(depName); err == nil {
 			// make a copy so we don't mutate the shared cache
@@ -88,25 +88,25 @@ func (rdc *realDeploymentControl) UpdateDeployment(rc *v1alpha1.RedisCluster, de
 	return updatedDep, err
 }
 
-// DeleteDeployment delete a Deployment in a RedisCluster.
-func (rdc *realDeploymentControl) DeleteDeployment(rc *v1alpha1.RedisCluster, dep *extv1.Deployment) error {
+// DeleteDeployment delete a Deployment in a Redis.
+func (rdc *realDeploymentControl) DeleteDeployment(rc *v1alpha1.Redis, dep *extv1.Deployment) error {
 	err := rdc.kubeCli.ExtensionsV1beta1().Deployments(rc.Namespace).Delete(dep.Name, nil)
 	rdc.recordDeploymentEvent("delete", rc, dep, err)
 	return err
 }
 
-// recordDeploymentEvent records an event for verb applied to a deployment in a RedisCluster. If err is nil the generated event will
+// recordDeploymentEvent records an event for verb applied to a deployment in a Redis. If err is nil the generated event will
 // have a reason of v1.EventTypeNormal. If err is not nil the generated event will have a reason of v1.EventTypeWarning.
-func (rdc *realDeploymentControl) recordDeploymentEvent(verb string, rc *v1alpha1.RedisCluster, dep *extv1.Deployment, err error) {
+func (rdc *realDeploymentControl) recordDeploymentEvent(verb string, rc *v1alpha1.Redis, dep *extv1.Deployment, err error) {
 	deployName := dep.GetName()
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
-		message := fmt.Sprintf("%s Deployment %s in RedisCluster %s successful",
+		message := fmt.Sprintf("%s Deployment %s in Redis %s successful",
 			strings.ToLower(verb), deployName, rc.Name)
 		rdc.recorder.Event(rc, v1.EventTypeNormal, reason, message)
 	} else {
 		reason := fmt.Sprintf("Failed%s", strings.Title(verb))
-		message := fmt.Sprintf("%s Deployment %s in RedisCluster %s failed error: %s",
+		message := fmt.Sprintf("%s Deployment %s in Redis %s failed error: %s",
 			strings.ToLower(verb), deployName, rc.Name, err)
 		rdc.recorder.Event(rc, v1.EventTypeWarning, reason, message)
 	}

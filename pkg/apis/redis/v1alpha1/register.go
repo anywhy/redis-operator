@@ -36,8 +36,8 @@ func Resource(resource string) schema.GroupResource {
 func addKnownTypes(scheme *runtime.Scheme) error {
 	Scheme = scheme
 	scheme.AddKnownTypes(SchemeGroupVersion,
-		&RedisCluster{},
-		&RedisClusterList{},
+		&Redis{},
+		&RedisList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 

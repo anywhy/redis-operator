@@ -17,11 +17,11 @@ import (
 	"github.com/anywhy/redis-operator/pkg/apis/redis/v1alpha1"
 )
 
-// ServiceControlInterface manages Services used in RedisCluster
+// ServiceControlInterface manages Services used in Redis
 type ServiceControlInterface interface {
-	CreateService(*v1alpha1.RedisCluster, *corev1.Service) error
-	UpdateService(*v1alpha1.RedisCluster, *corev1.Service) (*corev1.Service, error)
-	DeleteService(*v1alpha1.RedisCluster, *corev1.Service) error
+	CreateService(*v1alpha1.Redis, *corev1.Service) error
+	UpdateService(*v1alpha1.Redis, *corev1.Service) (*corev1.Service, error)
+	DeleteService(*v1alpha1.Redis, *corev1.Service) error
 }
 
 type realServiceControl struct {
@@ -40,8 +40,8 @@ func NewRealServiceControl(kubeCli kubernetes.Interface, svcLister corelisters.S
 	}
 }
 
-// CreateService create a Service in a RedisCluster.
-func (sc *realServiceControl) CreateService(rc *v1alpha1.RedisCluster, svc *corev1.Service) error {
+// CreateService create a Service in a Redis.
+func (sc *realServiceControl) CreateService(rc *v1alpha1.Redis, svc *corev1.Service) error {
 	_, err := sc.kubeCli.CoreV1().Services(rc.Namespace).Create(svc)
 	if apierrors.IsAlreadyExists(err) {
 		if !metav1.IsControlledBy(svc, rc) {
@@ -54,8 +54,8 @@ func (sc *realServiceControl) CreateService(rc *v1alpha1.RedisCluster, svc *core
 	return err
 }
 
-// UpdateService update a Service in a RedisCluster.
-func (sc *realServiceControl) UpdateService(rc *v1alpha1.RedisCluster, svc *corev1.Service) (*corev1.Service, error) {
+// UpdateService update a Service in a Redis.
+func (sc *realServiceControl) UpdateService(rc *v1alpha1.Redis, svc *corev1.Service) (*corev1.Service, error) {
 	ns := rc.GetNamespace()
 	rcName := rc.GetName()
 	svcName := svc.GetName()
@@ -66,7 +66,7 @@ func (sc *realServiceControl) UpdateService(rc *v1alpha1.RedisCluster, svc *core
 		var updateErr error
 		updateSvc, updateErr = sc.kubeCli.CoreV1().Services(ns).Update(svc)
 		if updateErr == nil {
-			glog.Infof("update Service: [%s/%s] successfully, RedisCluster: %s", ns, svcName, rcName)
+			glog.Infof("update Service: [%s/%s] successfully, Redis: %s", ns, svcName, rcName)
 			return nil
 		}
 
@@ -83,26 +83,26 @@ func (sc *realServiceControl) UpdateService(rc *v1alpha1.RedisCluster, svc *core
 	return updateSvc, err
 }
 
-// DeleteService delete a Service in a RedisCluster.
-func (sc *realServiceControl) DeleteService(rc *v1alpha1.RedisCluster, svc *corev1.Service) error {
+// DeleteService delete a Service in a Redis.
+func (sc *realServiceControl) DeleteService(rc *v1alpha1.Redis, svc *corev1.Service) error {
 	err := sc.kubeCli.CoreV1().Services(rc.Namespace).Delete(svc.Name, nil)
 	sc.recordServiceEvent("delete", rc, svc, err)
 	return err
 }
 
-// recordServiceEvent records an event for verb applied to a service in a RedisCluster. If err is nil the generated event will
+// recordServiceEvent records an event for verb applied to a service in a Redis. If err is nil the generated event will
 // have a reason of v1.EventTypeNormal. If err is not nil the generated event will have a reason of v1.EventTypeWarning.
-func (sc *realServiceControl) recordServiceEvent(verb string, rc *v1alpha1.RedisCluster, svc *corev1.Service, err error) {
+func (sc *realServiceControl) recordServiceEvent(verb string, rc *v1alpha1.Redis, svc *corev1.Service, err error) {
 	rcName := rc.Name
 	svcName := svc.Name
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
-		msg := fmt.Sprintf("%s Service %s in RedisCluster %s successful",
+		msg := fmt.Sprintf("%s Service %s in Redis %s successful",
 			strings.ToLower(verb), svcName, rcName)
 		sc.recorder.Event(rc, corev1.EventTypeNormal, reason, msg)
 	} else {
 		reason := fmt.Sprintf("Failed%s", strings.Title(verb))
-		msg := fmt.Sprintf("%s Service %s in RedisCluster %s failed error: %s",
+		msg := fmt.Sprintf("%s Service %s in Redis %s failed error: %s",
 			strings.ToLower(verb), svcName, rcName, err)
 		sc.recorder.Event(rc, corev1.EventTypeWarning, reason, msg)
 	}

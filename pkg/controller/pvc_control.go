@@ -16,10 +16,10 @@ import (
 	"github.com/anywhy/redis-operator/pkg/label"
 )
 
-// PVCControlInterface manages PVCs used in RedisCluster
+// PVCControlInterface manages PVCs used in Redis
 type PVCControlInterface interface {
-	UpdatePVC(*v1alpha1.RedisCluster, *corev1.PersistentVolumeClaim, *corev1.Pod) (*corev1.PersistentVolumeClaim, error)
-	DeletePVC(*v1alpha1.RedisCluster, *corev1.PersistentVolumeClaim) error
+	UpdatePVC(*v1alpha1.Redis, *corev1.PersistentVolumeClaim, *corev1.Pod) (*corev1.PersistentVolumeClaim, error)
+	DeletePVC(*v1alpha1.Redis, *corev1.PersistentVolumeClaim) error
 }
 
 type realPVCControl struct {
@@ -40,8 +40,8 @@ func NewRealPVCControl(
 	}
 }
 
-// UpdatePVC update a pvc in a RedisCluster.
-func (rpc *realPVCControl) UpdatePVC(rc *v1alpha1.RedisCluster, pvc *corev1.PersistentVolumeClaim, pod *corev1.Pod) (*corev1.PersistentVolumeClaim, error) {
+// UpdatePVC update a pvc in a Redis.
+func (rpc *realPVCControl) UpdatePVC(rc *v1alpha1.Redis, pvc *corev1.PersistentVolumeClaim, pod *corev1.Pod) (*corev1.PersistentVolumeClaim, error) {
 	ns, rcName := rc.GetNamespace(), rc.GetName()
 	pvcName := pvc.GetName()
 
@@ -56,7 +56,7 @@ func (rpc *realPVCControl) UpdatePVC(rc *v1alpha1.RedisCluster, pvc *corev1.Pers
 	if pod != nil {
 		podName := pod.GetName()
 		if pvc.Annotations[label.AnnPodNameKey] == podName {
-			glog.V(4).Infof("pvc %s/%s already has labels and annotations synced, skipping, RedisCluster: %s", ns, pvcName, rcName)
+			glog.V(4).Infof("pvc %s/%s already has labels and annotations synced, skipping, Redis: %s", ns, pvcName, rcName)
 		} else {
 			// udpate labels and anno
 			setIfNotEmpty(pvc.Annotations, label.AnnPodNameKey, podName)
@@ -70,10 +70,10 @@ func (rpc *realPVCControl) UpdatePVC(rc *v1alpha1.RedisCluster, pvc *corev1.Pers
 		var updateErr error
 		updatePVC, updateErr = rpc.kubeCli.CoreV1().PersistentVolumeClaims(ns).Update(pvc)
 		if updateErr == nil {
-			glog.Infof("update PVC: [%s/%s] successfully, RedisCluster: %s", ns, pvcName, rcName)
+			glog.Infof("update PVC: [%s/%s] successfully, Redis: %s", ns, pvcName, rcName)
 			return nil
 		}
-		glog.Errorf("failed to update PVC: [%s/%s], RedisCluster: %s, error: %v", ns, pvcName, rcName, updateErr)
+		glog.Errorf("failed to update PVC: [%s/%s], Redis: %s, error: %v", ns, pvcName, rcName, updateErr)
 
 		if updated, err := rpc.pvcLister.PersistentVolumeClaims(ns).Get(pvcName); err == nil {
 			// make a copy so we don't mutate the shared cache
@@ -90,27 +90,27 @@ func (rpc *realPVCControl) UpdatePVC(rc *v1alpha1.RedisCluster, pvc *corev1.Pers
 	return updatePVC, err
 }
 
-// DeletePVC delete a pvc in a RedisCluster.
-func (rpc *realPVCControl) DeletePVC(rc *v1alpha1.RedisCluster, pvc *corev1.PersistentVolumeClaim) error {
+// DeletePVC delete a pvc in a Redis.
+func (rpc *realPVCControl) DeletePVC(rc *v1alpha1.Redis, pvc *corev1.PersistentVolumeClaim) error {
 	err := rpc.kubeCli.CoreV1().PersistentVolumeClaims(rc.Namespace).Delete(pvc.Name, nil)
 	if err != nil {
-		glog.Errorf("failed to delete PVC: [%s/%s], RedisCluster: %s, %v", rc.Namespace, pvc.Name, rc.Name, err)
+		glog.Errorf("failed to delete PVC: [%s/%s], Redis: %s, %v", rc.Namespace, pvc.Name, rc.Name, err)
 	}
-	glog.Infof("delete PVC: [%s/%s] successfully, RedisCluster: %s", rc.Namespace, pvc.Name, rc.Name)
+	glog.Infof("delete PVC: [%s/%s] successfully, Redis: %s", rc.Namespace, pvc.Name, rc.Name)
 	rpc.recordPVCEvent("delete", rc, pvc.Name, err)
 	return err
 }
 
-func (rpc *realPVCControl) recordPVCEvent(verb string, rc *v1alpha1.RedisCluster, pvcName string, err error) {
+func (rpc *realPVCControl) recordPVCEvent(verb string, rc *v1alpha1.Redis, pvcName string, err error) {
 	rcName := rc.GetName()
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
-		msg := fmt.Sprintf("%s PVC %s in RedisCluster %s successful",
+		msg := fmt.Sprintf("%s PVC %s in Redis %s successful",
 			strings.ToLower(verb), pvcName, rcName)
 		rpc.recorder.Event(rc, corev1.EventTypeNormal, reason, msg)
 	} else {
 		reason := fmt.Sprintf("Failed%s", strings.Title(verb))
-		msg := fmt.Sprintf("%s PVC %s in RedisCluster %s failed error: %s",
+		msg := fmt.Sprintf("%s PVC %s in Redis %s failed error: %s",
 			strings.ToLower(verb), pvcName, rcName, err)
 		rpc.recorder.Event(rc, corev1.EventTypeWarning, reason, msg)
 	}

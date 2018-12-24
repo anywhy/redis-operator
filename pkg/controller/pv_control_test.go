@@ -20,7 +20,7 @@ import (
 func TestPVControlPatchPVReclaimPolicySuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
 	fakeClient, pvcInformer, pvInformer, recorder := newFakeRecorderAndPVCInformer()
-	rc := newRedisCluster("demo")
+	rc := newRedis("demo")
 	pv := newPV()
 	control := NewRealPVControl(fakeClient, pvcInformer.Lister(), pvInformer.Lister(), recorder)
 	fakeClient.AddReactor("patch", "persistentvolumes", func(action core.Action) (bool, runtime.Object, error) {
@@ -37,7 +37,7 @@ func TestPVControlPatchPVReclaimPolicySuccess(t *testing.T) {
 func TestPVControlPatchPVReclaimPolicyFaild(t *testing.T) {
 	g := NewGomegaWithT(t)
 	fakeClient, pvcInformer, pvInformer, recorder := newFakeRecorderAndPVCInformer()
-	rc := newRedisCluster("demo")
+	rc := newRedis("demo")
 	pv := newPV()
 	control := NewRealPVControl(fakeClient, pvcInformer.Lister(), pvInformer.Lister(), recorder)
 	fakeClient.AddReactor("patch", "persistentvolumes", func(action core.Action) (bool, runtime.Object, error) {
@@ -54,7 +54,7 @@ func TestPVControlPatchPVReclaimPolicyFaild(t *testing.T) {
 func TestPVControlPatchPVReclaimPolicyConflictSuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
 	fakeClient, pvcInformer, pvInformer, recorder := newFakeRecorderAndPVCInformer()
-	rc := newRedisCluster("demo")
+	rc := newRedis("demo")
 	pv := newPV()
 	control := NewRealPVControl(fakeClient, pvcInformer.Lister(), pvInformer.Lister(), recorder)
 
@@ -77,7 +77,7 @@ func TestPVControlPatchPVReclaimPolicyConflictSuccess(t *testing.T) {
 func TestPVControlUpdatePVSuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
 	fakeClient, pvcInformer, pvInformer, recorder := newFakeRecorderAndPVCInformer()
-	rc := newRedisCluster("demo")
+	rc := newRedis("demo")
 	pv := newPV()
 	pv.Annotations = map[string]string{"a": "b"}
 	pvc := newPVC(rc)
@@ -103,7 +103,7 @@ func TestPVControlUpdatePVSuccess(t *testing.T) {
 func TestPVControlUpdatePVConflictSuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
 	fakeClient, pvcInformer, pvInformer, recorder := newFakeRecorderAndPVCInformer()
-	rc := newRedisCluster("demo")
+	rc := newRedis("demo")
 	pv := newPV()
 	pv.Annotations = map[string]string{"a": "b"}
 	pvc := newPVC(rc)
@@ -137,7 +137,7 @@ func TestPVControlUpdatePVConflictSuccess(t *testing.T) {
 func TestPVControlUpdatePVFaild(t *testing.T) {
 	g := NewGomegaWithT(t)
 	fakeClient, pvcInformer, pvInformer, recorder := newFakeRecorderAndPVCInformer()
-	rc := newRedisCluster("demo")
+	rc := newRedis("demo")
 	pv := newPV()
 	pv.Annotations = map[string]string{"a": "b"}
 	pvc := newPVC(rc)

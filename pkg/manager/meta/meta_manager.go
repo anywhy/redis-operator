@@ -37,14 +37,14 @@ func NewMetaManager(
 	}
 }
 
-func (mm *metaManager) Sync(rc *v1alpha1.RedisCluster) error {
-	if rc.Spec.Mode == v1alpha1.MSCluster {
-		return mm.syncRedisMSCluster(rc)
+func (mm *metaManager) Sync(rc *v1alpha1.Redis) error {
+	if rc.Spec.Mode == v1alpha1.ReplicaCluster {
+		return mm.syncReplicaCluster(rc)
 	}
-	return mm.syncRedisShardCluster(rc)
+	return mm.syncRedisCluster(rc)
 }
 
-func (mm *metaManager) syncRedisMSCluster(rc *v1alpha1.RedisCluster) error {
+func (mm *metaManager) syncReplicaCluster(rc *v1alpha1.Redis) error {
 	ns, labels := rc.GetNamespace(), rc.GetLabels()
 
 	instanceName := labels[label.InstanceLabelKey]
@@ -71,6 +71,6 @@ func (mm *metaManager) syncRedisMSCluster(rc *v1alpha1.RedisCluster) error {
 	return nil
 }
 
-func (mm *metaManager) syncRedisShardCluster(rc *v1alpha1.RedisCluster) error {
+func (mm *metaManager) syncRedisCluster(rc *v1alpha1.Redis) error {
 	return nil
 }

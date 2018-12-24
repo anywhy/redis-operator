@@ -13,9 +13,9 @@ import (
 // Scaler implements the logic for scaling out or scaling in the cluster.
 type Scaler interface {
 	// ScaleOut scales out the cluster
-	ScaleOut(rc *v1alpha1.RedisCluster, newSet *apps.StatefulSet, oldSet *apps.StatefulSet) error
+	ScaleOut(rc *v1alpha1.Redis, newSet *apps.StatefulSet, oldSet *apps.StatefulSet) error
 	// ScaleIn scales in the cluster
-	ScaleIn(rc *v1alpha1.RedisCluster, newSet *apps.StatefulSet, oldSet *apps.StatefulSet) error
+	ScaleIn(rc *v1alpha1.Redis, newSet *apps.StatefulSet, oldSet *apps.StatefulSet) error
 }
 
 type generalScaler struct {

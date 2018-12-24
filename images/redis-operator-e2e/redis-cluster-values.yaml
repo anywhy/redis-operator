@@ -24,7 +24,7 @@ services:
     type: ClusterIP
 
 redis:
-  members: 1
+  members: 2
   image: localhost:5000/redis:latest
   logLevel: info
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.

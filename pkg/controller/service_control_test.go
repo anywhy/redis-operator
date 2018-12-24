@@ -19,7 +19,7 @@ func TestServiceControlCreatesServices(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 
-	rc := newRedisCluster("redis-demo")
+	rc := newRedis("redis-demo")
 	svc := newService(rc, "master")
 	fakeClient := &fake.Clientset{}
 	control := NewRealServiceControl(fakeClient, nil, recorder)
@@ -40,7 +40,7 @@ func TestServiceControlCreatesServicesExits(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 
-	rc := newRedisCluster("redis-demo")
+	rc := newRedis("redis-demo")
 	svc := newService(rc, "master")
 	fakeClient := &fake.Clientset{}
 	control := NewRealServiceControl(fakeClient, nil, recorder)
@@ -53,15 +53,15 @@ func TestServiceControlCreatesServicesExits(t *testing.T) {
 
 	// events := collectEvents(recorder.Events)
 	// g.Expect(events).To(HaveLen(1))
-	// g.Expect(events[0]).To(ContainSubstring("already exists and is not managed by RedisCluster"))
+	// g.Expect(events[0]).To(ContainSubstring("already exists and is not managed by Redis"))
 }
 
 func TestServiceControlCreatesServicesExitsNotConrollBySameCluster(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 
-	rc := newRedisCluster("redis-demo")
-	rc1 := newRedisCluster("redis-demo1")
+	rc := newRedis("redis-demo")
+	rc1 := newRedis("redis-demo1")
 
 	rc.UID = "123"
 	rc1.UID = "abc"
@@ -77,14 +77,14 @@ func TestServiceControlCreatesServicesExitsNotConrollBySameCluster(t *testing.T)
 
 	events := collectEvents(recorder.Events)
 	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring("already exists and is not managed by RedisCluster"))
+	g.Expect(events[0]).To(ContainSubstring("already exists and is not managed by Redis"))
 }
 
 func TestServiceControlCreatesServiceFailed(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 
-	rc := newRedisCluster("redis-demo")
+	rc := newRedis("redis-demo")
 
 	svc := newService(rc, "master")
 	fakeClient := &fake.Clientset{}
@@ -104,7 +104,7 @@ func TestServiceControlUpdateService(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 
-	rc := newRedisCluster("redis-demo")
+	rc := newRedis("redis-demo")
 
 	svc := newService(rc, "master")
 	svc.Spec.ClusterIP = "127.0.0.1"
@@ -129,7 +129,7 @@ func TestServiceControlUpdateServiceConflictSuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 
-	rc := newRedisCluster("redis-demo")
+	rc := newRedis("redis-demo")
 	svc := newService(rc, "master")
 	svc.Spec.ClusterIP = "1.1.1.1"
 
@@ -165,7 +165,7 @@ func TestServiceControlDeleteService(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 
-	rc := newRedisCluster("redis-demo")
+	rc := newRedis("redis-demo")
 
 	svc := newService(rc, "master")
 	fakeClient := &fake.Clientset{}
@@ -185,7 +185,7 @@ func TestServiceControlDeleteServiceFaild(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 
-	rc := newRedisCluster("redis-demo")
+	rc := newRedis("redis-demo")
 
 	svc := newService(rc, "master")
 	fakeClient := &fake.Clientset{}

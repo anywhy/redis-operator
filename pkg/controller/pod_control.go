@@ -20,9 +20,9 @@ import (
 
 // PodControlInterface defines the interface that RedisController uses to create, update, and delete Pods,
 type PodControlInterface interface {
-	CreatePod(*v1alpha1.RedisCluster, *corev1.Pod) error
-	UpdatePod(*v1alpha1.RedisCluster, *corev1.Pod) (*corev1.Pod, error)
-	DeletePod(*v1alpha1.RedisCluster, *corev1.Pod) error
+	CreatePod(*v1alpha1.Redis, *corev1.Pod) error
+	UpdatePod(*v1alpha1.Redis, *corev1.Pod) (*corev1.Pod, error)
+	DeletePod(*v1alpha1.Redis, *corev1.Pod) error
 }
 
 type realPodControl struct {
@@ -44,7 +44,7 @@ func NewRealPodControl(
 	}
 }
 
-func (rpc *realPodControl) CreatePod(rc *v1alpha1.RedisCluster, pod *corev1.Pod) error {
+func (rpc *realPodControl) CreatePod(rc *v1alpha1.Redis, pod *corev1.Pod) error {
 	retPod, err := rpc.kubeCli.CoreV1().Pods(rc.Namespace).Create(pod)
 	// sink already exists errors
 	if apierrors.IsAlreadyExists(err) {
@@ -58,15 +58,15 @@ func (rpc *realPodControl) CreatePod(rc *v1alpha1.RedisCluster, pod *corev1.Pod)
 	return err
 }
 
-func (rpc *realPodControl) UpdatePod(rc *v1alpha1.RedisCluster, pod *corev1.Pod) (*corev1.Pod, error) {
+func (rpc *realPodControl) UpdatePod(rc *v1alpha1.Redis, pod *corev1.Pod) (*corev1.Pod, error) {
 	ns, rcName, labels := rc.GetNamespace(), rc.GetName(), rc.GetLabels()
 	if labels == nil {
-		return pod, fmt.Errorf("pod %s/%s has empty labels, RedisCluster: %s", ns, pod.Name, rcName)
+		return pod, fmt.Errorf("pod %s/%s has empty labels, Redis: %s", ns, pod.Name, rcName)
 	}
 
 	_, ok := labels[label.InstanceLabelKey]
 	if !ok {
-		return pod, fmt.Errorf("pod %s/%s doesn't have %s label, RedisCluster: %s", ns,
+		return pod, fmt.Errorf("pod %s/%s doesn't have %s label, Redis: %s", ns,
 			pod.Name, label.InstanceLabelKey, rcName)
 	}
 
@@ -80,16 +80,16 @@ func (rpc *realPodControl) UpdatePod(rc *v1alpha1.RedisCluster, pod *corev1.Pod)
 		var updateErr error
 		updatePod, updateErr = rpc.kubeCli.CoreV1().Pods(ns).Update(pod)
 		if updateErr == nil {
-			glog.Infof("RedisCluster: [%s/%s] updated successfully", ns, rcName)
+			glog.Infof("Redis: [%s/%s] updated successfully", ns, rcName)
 			return nil
 		}
-		glog.Errorf("failed to update RedisCluster: [%s/%s], error: %v", ns, rcName, updateErr)
+		glog.Errorf("failed to update Redis: [%s/%s], error: %v", ns, rcName, updateErr)
 
 		if updated, err := rpc.podLister.Pods(ns).Get(rcName); err == nil {
 			// make a copy so we don't mutate the shared cache
 			pod = updated.DeepCopy()
 		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated RedisCluster %s/%s from lister: %v", ns, rcName, err))
+			utilruntime.HandleError(fmt.Errorf("error getting updated Redis %s/%s from lister: %v", ns, rcName, err))
 		}
 
 		return updateErr
@@ -97,15 +97,15 @@ func (rpc *realPodControl) UpdatePod(rc *v1alpha1.RedisCluster, pod *corev1.Pod)
 	return updatePod, err
 }
 
-func (rpc *realPodControl) DeletePod(rc *v1alpha1.RedisCluster, pod *corev1.Pod) error {
+func (rpc *realPodControl) DeletePod(rc *v1alpha1.Redis, pod *corev1.Pod) error {
 	ns := rc.GetNamespace()
 	podName := pod.GetName()
 	rcName := rc.GetName()
 	err := rpc.kubeCli.CoreV1().Pods(ns).Delete(podName, nil)
 	if err != nil {
-		glog.Errorf("failed to delete Pod: [%s/%s], RedisCluster: %s, %v", ns, podName, rcName, err)
+		glog.Errorf("failed to delete Pod: [%s/%s], Redis: %s, %v", ns, podName, rcName, err)
 	} else {
-		glog.V(4).Infof("delete Pod: [%s/%s] successfully, RedisCluster: %s", ns, podName, rcName)
+		glog.V(4).Infof("delete Pod: [%s/%s] successfully, Redis: %s", ns, podName, rcName)
 	}
 	rpc.recordPodEvent("delete", rc, pod, err)
 	return err
@@ -113,15 +113,15 @@ func (rpc *realPodControl) DeletePod(rc *v1alpha1.RedisCluster, pod *corev1.Pod)
 
 // recordPodEvent records an event for verb applied to a Pod in a Redis. If err is nil the generated event will
 // have a reason of v1.EventTypeNormal. If err is not nil the generated event will have a reason of v1.EventTypeWarning.
-func (rpc *realPodControl) recordPodEvent(verb string, rc *v1alpha1.RedisCluster, pod *corev1.Pod, err error) {
+func (rpc *realPodControl) recordPodEvent(verb string, rc *v1alpha1.Redis, pod *corev1.Pod, err error) {
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
-		message := fmt.Sprintf("%s Pod %s in RedisCluster %s successful",
+		message := fmt.Sprintf("%s Pod %s in Redis %s successful",
 			strings.ToLower(verb), pod.Name, rc.Name)
 		rpc.recorder.Event(rc, corev1.EventTypeNormal, reason, message)
 	} else {
 		reason := fmt.Sprintf("Failed%s", strings.Title(verb))
-		message := fmt.Sprintf("%s Pod %s in RedisCluster %s failed error: %s",
+		message := fmt.Sprintf("%s Pod %s in Redis %s failed error: %s",
 			strings.ToLower(verb), pod.Name, rc.Name, err)
 		rpc.recorder.Event(rc, corev1.EventTypeWarning, reason, message)
 	}

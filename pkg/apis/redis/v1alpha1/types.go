@@ -13,10 +13,10 @@ type ClusterMode string
 type MemberType string
 
 const (
-	// MSCluster means that redis cluster is master/slave
-	MSCluster ClusterMode = "MS"
-	// ShardCluster means redis cluster is shard mode
-	ShardCluster ClusterMode = "CLUSTER"
+	// ReplicaCluster means that redis cluster is master/slave
+	ReplicaCluster ClusterMode = "replica"
+	// RedisCluster means redis cluster is shard mode
+	RedisCluster ClusterMode = "cluster"
 
 	// SentinelMemberType is sentinel container type
 	SentinelMemberType MemberType = "sentinel"
@@ -39,31 +39,31 @@ const (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// RedisCluster is a redis cluster control's spec
-type RedisCluster struct {
+// Redis is a redis cluster control's spec
+type Redis struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Spec defines of the redis cluster
-	Spec RedisClusterSpec `json:"spec"`
+	Spec RedisSpec `json:"spec"`
 
 	// Most recently observed status of the redis cluster
-	Status RedisClusterStatus `json:"status"`
+	Status RedisStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// RedisClusterList is RedisCluster list
-type RedisClusterList struct {
+// RedisList is Redis list
+type RedisList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 
-	Items []RedisCluster `json:"items"`
+	Items []Redis `json:"items"`
 }
 
-// RedisClusterSpec redis cluster attributes
-type RedisClusterSpec struct {
+// RedisSpec redis cluster attributes
+type RedisSpec struct {
 	// Mode choose from /MS/CLUSTER
 	Mode ClusterMode `json:"mode"`
 
@@ -86,7 +86,7 @@ type RedisInstanceSpec struct {
 	Tolerations          []corev1.Toleration `json:"tolerations,omitempty"`
 	SchedulerName        string              `json:"schedulerName,omitempty"`
 
-	// Services list non-headless services type used in RedisCluster
+	// Services list non-headless services type used in Redis
 	Services        []Service                            `json:"services,omitempty"`
 	PVReclaimPolicy corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
 }
@@ -101,10 +101,10 @@ type RedisSentinelSpec struct {
 	Tolerations      []corev1.Toleration `json:"tolerations,omitempty"`
 }
 
-// RedisClusterStatus represents the current status of a redis cluster.
-type RedisClusterStatus struct {
-	Redis    MSClusterStatus `json:"redis,omitempty"`
-	Sentinel SentinelStatus  `json:"sentinel,omitempty"`
+// RedisStatus represents the current status of a redis cluster.
+type RedisStatus struct {
+	Replica  ReplicaClusterStatus `json:"replica,omitempty"`
+	Sentinel SentinelStatus       `json:"sentinel,omitempty"`
 }
 
 // ContainerSpec is the container spec of a pod
@@ -125,7 +125,7 @@ type ResourceRequirement struct {
 	Storage string `json:"storage,omitempty"`
 }
 
-// Service represent service type used in RedisCluster
+// Service represent service type used in Redis
 type Service struct {
 	Name string `json:"name,omitempty"`
 	Type string `json:"type,omitempty"`
@@ -137,8 +137,8 @@ type SentinelStatus struct {
 	StatefulSet *apps.StatefulSetStatus `json:"statefulset,omitempty"`
 }
 
-// MSClusterStatus is ms cluster status
-type MSClusterStatus struct {
+// ReplicaClusterStatus is ms cluster status
+type ReplicaClusterStatus struct {
 	Phase       MemberPhase             `json:"phase,omitempty"`
 	StatefulSet *apps.StatefulSetStatus `json:"statefulset,omitempty"`
 	MasterName  string                  `json:"masterName,omitempty"`

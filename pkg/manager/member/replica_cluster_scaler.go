@@ -8,21 +8,21 @@ import (
 	"github.com/anywhy/redis-operator/pkg/controller"
 )
 
-type redisScaler struct {
+type replicaScaler struct {
 	generalScaler
 }
 
-// NewRedisScaler return redis scaler implement
-func NewRedisScaler(
+// NewReplicaScaler return redis scaler implement
+func NewReplicaScaler(
 	pvcLister corelisters.PersistentVolumeClaimLister,
 	pvcControl controller.PVCControlInterface) Scaler {
-	return &redisScaler{generalScaler{
+	return &replicaScaler{generalScaler{
 		pvcLister:  pvcLister,
 		pvcControl: pvcControl}}
 }
 
 // ScaleOut scales out the cluster
-func (rs *redisScaler) ScaleOut(rc *v1alpha1.RedisCluster, newSet *apps.StatefulSet, oldSet *apps.StatefulSet) error {
+func (rs *replicaScaler) ScaleOut(rc *v1alpha1.Redis, newSet *apps.StatefulSet, oldSet *apps.StatefulSet) error {
 	if rc.RedisUpgrading() {
 		resetReplicas(newSet, oldSet)
 		return nil
@@ -33,7 +33,7 @@ func (rs *redisScaler) ScaleOut(rc *v1alpha1.RedisCluster, newSet *apps.Stateful
 }
 
 // ScaleIn scales in the cluster
-func (rs *redisScaler) ScaleIn(rc *v1alpha1.RedisCluster, newSet *apps.StatefulSet, oldSet *apps.StatefulSet) error {
+func (rs *replicaScaler) ScaleIn(rc *v1alpha1.Redis, newSet *apps.StatefulSet, oldSet *apps.StatefulSet) error {
 	if rc.RedisUpgrading() {
 		resetReplicas(newSet, oldSet)
 		return nil

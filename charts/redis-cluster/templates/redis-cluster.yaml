@@ -1,5 +1,5 @@
 apiVersion: anywhy.github/v1alpha1
-kind: RedisCluster
+kind: Redis
 metadata:
   name: {{ .Values.clusterName }}
   labels:
@@ -10,7 +10,7 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
   pvReclaimPolicy: {{ .Values.pvReclaimPolicy }}
-  mode: {{.Values.mode | default "MS"}}
+  mode: {{.Values.mode | default "replica"}}
   services:
 {{ toYaml .Values.services | indent 4 }}
   schedulerName: {{ .Values.schedulerName | default "default-scheduler" }}

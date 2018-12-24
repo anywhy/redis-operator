@@ -20,12 +20,12 @@ import (
 
 // StatefulSetControlInterface defines the interface that uses to create, update, and delete StatefulSets,
 type StatefulSetControlInterface interface {
-	// CreateStatefulSet creates a StatefulSet in a RedisCluster.
-	CreateStatefulSet(*v1alpha1.RedisCluster, *apps.StatefulSet) error
-	// UpdateStatefulSet updates a StatefulSet in a RedisCluster.
-	UpdateStatefulSet(*v1alpha1.RedisCluster, *apps.StatefulSet) (*apps.StatefulSet, error)
-	// DeleteStatefulSet deletes a StatefulSet in a RedisCluster.
-	DeleteStatefulSet(*v1alpha1.RedisCluster, *apps.StatefulSet) error
+	// CreateStatefulSet creates a StatefulSet in a Redis.
+	CreateStatefulSet(*v1alpha1.Redis, *apps.StatefulSet) error
+	// UpdateStatefulSet updates a StatefulSet in a Redis.
+	UpdateStatefulSet(*v1alpha1.Redis, *apps.StatefulSet) (*apps.StatefulSet, error)
+	// DeleteStatefulSet deletes a StatefulSet in a Redis.
+	DeleteStatefulSet(*v1alpha1.Redis, *apps.StatefulSet) error
 }
 
 type realStatefulSetControl struct {
@@ -40,8 +40,8 @@ func NewRealStatefuSetControl(kubeCli kubernetes.Interface, setLister appslister
 	return &realStatefulSetControl{kubeCli, setLister, recorder}
 }
 
-// CreateStatefulSet create a StatefulSet in a RedisCluster.
-func (sc *realStatefulSetControl) CreateStatefulSet(rc *v1alpha1.RedisCluster, set *apps.StatefulSet) error {
+// CreateStatefulSet create a StatefulSet in a Redis.
+func (sc *realStatefulSetControl) CreateStatefulSet(rc *v1alpha1.Redis, set *apps.StatefulSet) error {
 	newSS, err := sc.kubeCli.AppsV1beta1().StatefulSets(rc.Namespace).Create(set)
 	// sink already exists errors
 	if apierrors.IsAlreadyExists(err) {
@@ -55,8 +55,8 @@ func (sc *realStatefulSetControl) CreateStatefulSet(rc *v1alpha1.RedisCluster, s
 	return err
 }
 
-// UpdateStatefulSet update a StatefulSet in a RedisCluster.
-func (sc *realStatefulSetControl) UpdateStatefulSet(rc *v1alpha1.RedisCluster, set *apps.StatefulSet) (*apps.StatefulSet, error) {
+// UpdateStatefulSet update a StatefulSet in a Redis.
+func (sc *realStatefulSetControl) UpdateStatefulSet(rc *v1alpha1.Redis, set *apps.StatefulSet) (*apps.StatefulSet, error) {
 	ns := rc.GetNamespace()
 	rcName := rc.GetName()
 	setName := set.GetName()
@@ -67,10 +67,10 @@ func (sc *realStatefulSetControl) UpdateStatefulSet(rc *v1alpha1.RedisCluster, s
 		var updateErr error
 		updatedSS, updateErr = sc.kubeCli.AppsV1beta1().StatefulSets(ns).Update(set)
 		if updateErr == nil {
-			glog.Infof("RedisCluster: [%s/%s]'s StatefulSet: [%s/%s] updated successfully", ns, rcName, ns, setName)
+			glog.Infof("Redis: [%s/%s]'s StatefulSet: [%s/%s] updated successfully", ns, rcName, ns, setName)
 			return nil
 		}
-		glog.Errorf("failed to update RedisCluster: [%s/%s]'s StatefulSet: [%s/%s], error: %v", ns, rcName, ns, setName, updateErr)
+		glog.Errorf("failed to update Redis: [%s/%s]'s StatefulSet: [%s/%s], error: %v", ns, rcName, ns, setName, updateErr)
 
 		if updated, err := sc.setLister.StatefulSets(ns).Get(setName); err == nil {
 			// make a copy so we don't mutate the shared cache
@@ -86,24 +86,24 @@ func (sc *realStatefulSetControl) UpdateStatefulSet(rc *v1alpha1.RedisCluster, s
 	return updatedSS, err
 }
 
-// DeleteStatefulSet delete a StatefulSet in a RedisCluster.
-func (sc *realStatefulSetControl) DeleteStatefulSet(rc *v1alpha1.RedisCluster, set *apps.StatefulSet) error {
+// DeleteStatefulSet delete a StatefulSet in a Redis.
+func (sc *realStatefulSetControl) DeleteStatefulSet(rc *v1alpha1.Redis, set *apps.StatefulSet) error {
 	err := sc.kubeCli.AppsV1beta1().StatefulSets(rc.Namespace).Delete(set.Name, nil)
 	sc.recordStatefulSetEvent("delete", rc, set, err)
 	return err
 }
 
-func (sc *realStatefulSetControl) recordStatefulSetEvent(verb string, rc *v1alpha1.RedisCluster, set *apps.StatefulSet, err error) {
+func (sc *realStatefulSetControl) recordStatefulSetEvent(verb string, rc *v1alpha1.Redis, set *apps.StatefulSet, err error) {
 	rcName := rc.Name
 	setName := set.Name
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
-		message := fmt.Sprintf("%s StatefulSet %s in RedisCluster %s successful",
+		message := fmt.Sprintf("%s StatefulSet %s in Redis %s successful",
 			strings.ToLower(verb), setName, rcName)
 		sc.recorder.Event(rc, corev1.EventTypeNormal, reason, message)
 	} else {
 		reason := fmt.Sprintf("Failed%s", strings.Title(verb))
-		message := fmt.Sprintf("%s StatefulSet %s in RedisCluster %s failed error: %s",
+		message := fmt.Sprintf("%s StatefulSet %s in Redis %s failed error: %s",
 			strings.ToLower(verb), setName, rcName, err)
 		sc.recorder.Event(rc, corev1.EventTypeWarning, reason, message)
 	}

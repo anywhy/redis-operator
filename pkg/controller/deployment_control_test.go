@@ -19,7 +19,7 @@ func TestServiceControlCreateDeployment(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 
-	rc := newRedisCluster("redis-demo")
+	rc := newRedis("redis-demo")
 	dep := newDeployment(rc, "sentinel")
 	fakeClient := &fake.Clientset{}
 	control := NewDeploymentControl(fakeClient, nil, recorder)
@@ -40,7 +40,7 @@ func TestServiceControlCreateDeploymentExits(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 
-	rc := newRedisCluster("redis-demo")
+	rc := newRedis("redis-demo")
 	dep := newDeployment(rc, "sentinel")
 	fakeClient := &fake.Clientset{}
 	control := NewDeploymentControl(fakeClient, nil, recorder)
@@ -56,8 +56,8 @@ func TestServiceControlCreateDeploymentExitsNotConrollBySameCluster(t *testing.T
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 
-	rc := newRedisCluster("redis-demo")
-	rc1 := newRedisCluster("redis-demo1")
+	rc := newRedis("redis-demo")
+	rc1 := newRedis("redis-demo1")
 
 	rc.UID = "123"
 	rc1.UID = "abc"
@@ -74,14 +74,14 @@ func TestServiceControlCreateDeploymentExitsNotConrollBySameCluster(t *testing.T
 
 	events := collectEvents(recorder.Events)
 	g.Expect(events).To(HaveLen(1))
-	g.Expect(events[0]).To(ContainSubstring("already exists and is not managed by RedisCluster"))
+	g.Expect(events[0]).To(ContainSubstring("already exists and is not managed by Redis"))
 }
 
 func TestServiceControlCreateDeploymentFailed(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 
-	rc := newRedisCluster("redis-demo")
+	rc := newRedis("redis-demo")
 
 	dep := newDeployment(rc, "sentinel")
 	fakeClient := &fake.Clientset{}
@@ -101,7 +101,7 @@ func TestServiceControlUpdateDeployment(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 
-	rc := newRedisCluster("redis-demo")
+	rc := newRedis("redis-demo")
 
 	dep := newDeployment(rc, "sentinel")
 	dep.Spec.Paused = true
@@ -124,7 +124,7 @@ func TestServiceControlUpdateDeploymentConflictSuccess(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 
-	rc := newRedisCluster("redis-demo")
+	rc := newRedis("redis-demo")
 	dep := newDeployment(rc, "sentinel")
 	dep.Spec.Paused = false
 
@@ -160,7 +160,7 @@ func TestServiceControlDeleteDeployment(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 
-	rc := newRedisCluster("redis-demo")
+	rc := newRedis("redis-demo")
 
 	dep := newDeployment(rc, "sentinel")
 	fakeClient := &fake.Clientset{}
@@ -180,7 +180,7 @@ func TestServiceControlDeleteDeploymentFaild(t *testing.T) {
 	g := NewGomegaWithT(t)
 	recorder := record.NewFakeRecorder(10)
 
-	rc := newRedisCluster("redis-demo")
+	rc := newRedis("redis-demo")
 
 	dep := newDeployment(rc, "sentinel")
 	fakeClient := &fake.Clientset{}

@@ -12,12 +12,12 @@ import (
 const (
 	// MessageResourceExists is the message used for Events when a resource
 	// fails to sync due to a Deployment already existing
-	MessageResourceExists = "%s %s/%s  already exists and is not managed by RedisCluster"
+	MessageResourceExists = "%s %s/%s  already exists and is not managed by Redis"
 )
 
 var (
 	// controllerKind contains the schema.GroupVersionKind for this controller type.
-	controllerKind = v1alpha1.SchemeGroupVersion.WithKind("RedisCluster")
+	controllerKind = v1alpha1.SchemeGroupVersion.WithKind("Redis")
 	// DefaultStorageClassName is the default storageClassName
 	DefaultStorageClassName string
 
@@ -25,8 +25,8 @@ var (
 	ClusterScoped bool
 )
 
-// GetOwnerRef returns RedisCluster's OwnerReference
-func GetOwnerRef(rc *v1alpha1.RedisCluster) metav1.OwnerReference {
+// GetOwnerRef returns Redis's OwnerReference
+func GetOwnerRef(rc *v1alpha1.Redis) metav1.OwnerReference {
 	controller := true
 	blockOwnerDeletion := true
 	return metav1.OwnerReference{
