@@ -3,7 +3,6 @@ package member
 import (
 	"fmt"
 
-	"github.com/golang/glog"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -155,7 +154,6 @@ func (rmm *replicaMemeberManager) syncReplicaStatefulSetForRedis(rc *v1alpha1.Re
 	}
 
 	// sync status
-	glog.Infof("Sync replica's status: %v", rc.Status)
 	if err := rmm.syncReplicaStatefulSetStatus(rc, oldSet); err != nil {
 		return err
 	}
@@ -202,7 +200,6 @@ func (rmm *replicaMemeberManager) initReplicaMaster(rc *v1alpha1.Redis) (*corev1
 		masterPodName = rc.Status.Replica.MasterName
 	}
 
-	glog.Infof("Init replica's master: %v", masterPodName)
 	masterPod, err := rmm.podLister.Pods(ns).Get(masterPodName)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return nil, err
@@ -216,7 +213,6 @@ func (rmm *replicaMemeberManager) initReplicaMaster(rc *v1alpha1.Redis) (*corev1
 		}
 		masterPodCopy.Labels[label.ComponentLabelKey] = label.MasterLabelKey
 		rc.Status.Replica.MasterName = masterPodCopy.Name
-		glog.Infof("udpate master pod: %v", rc.Status.Replica.MasterName)
 		return rmm.podControl.UpdatePod(rc, masterPodCopy)
 	}
 	return masterPod, nil

@@ -70,8 +70,11 @@ func (rpc *realPodControl) UpdatePod(rc *v1alpha1.Redis, pod *corev1.Pod) (*core
 			pod.Name, label.InstanceLabelKey, rcName)
 	}
 
-	if _, ok := labels[label.ComponentLabelKey]; !ok {
-		labels[label.ComponentLabelKey] = label.SlaveLabelKey
+	// if replica cluster set component slave role
+	if rc.Spec.Mode == v1alpha1.ReplicaCluster {
+		if _, ok := labels[label.ComponentLabelKey]; !ok {
+			labels[label.ComponentLabelKey] = label.SlaveLabelKey
+		}
 	}
 
 	var updatePod *corev1.Pod

@@ -76,12 +76,28 @@ func (rcc *defaultRedisControl) updateRedis(rc *v1alpha1.Redis) error {
 	return rcc.updateRedisCluster(rc)
 }
 
-// sync ms cluster
+// update replica cluster
 func (rcc *defaultRedisControl) updateReplicaCluster(rc *v1alpha1.Redis) error {
-	return rcc.replicaMemberManager.Sync(rc)
+	// works that should do to making the redis replica cluster
+	//  - create or update the master/slave service
+	//  - create or update the master/slave headless service
+	//  - create the replica statefulset
+	//  - sync replica cluster status to Redis object
+	//  - set one annotations to the master replica cluster member:
+	// 		- label.ComponentLabelKey
+	//   - upgrade the replica cluster
+	//   - scale out/in the replica cluster
+	if err := rcc.replicaMemberManager.Sync(rc); err != nil {
+		return err
+	}
+
+	// syncing the labels from Pod to PVC and PV, these labels include:
+	//   - label.ComponentLabelKey
+	//   - label.NamespaceLabelKey
+	return rcc.metaManager.Sync(rc)
 }
 
-// sync redis cluster
+// update redis cluster
 func (rcc *defaultRedisControl) updateRedisCluster(rc *v1alpha1.Redis) error {
 	return rcc.redisClusterMemberManager.Sync(rc)
 }
