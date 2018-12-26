@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.clusterName }}-redis
+  labels:
+    app.kubernetes.io/name: {{ template "chart.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: redis
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
+data:
+  config-file: |-
+    {{- if .Values.redis.config }}
+{{ .Values.redis.config | indent 4 }}
+    {{- else }}
+{{ tuple "config/_redis-config.tpl" }}
+    {{- end -}}
