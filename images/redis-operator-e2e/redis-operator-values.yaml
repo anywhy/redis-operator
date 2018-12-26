@@ -10,7 +10,7 @@ rbac:
 
 # operatorImage is Redis Operator image
 operatorImage: 127.0.0.1:5000/redis-operator:latest
-imagePullPolicy: IfNotPresent
+imagePullPolicy: Always
 
 defaultStorageClassName: local-storage
 

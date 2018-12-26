@@ -46,9 +46,8 @@ func (mm *metaManager) Sync(rc *v1alpha1.Redis) error {
 
 func (mm *metaManager) syncReplicaCluster(rc *v1alpha1.Redis) error {
 	ns, labels := rc.GetNamespace(), rc.GetLabels()
-
 	instanceName := labels[label.InstanceLabelKey]
-	l, err := label.New().Cluster(instanceName).Selector()
+	l, err := label.New().Instance(instanceName).Selector()
 	if err != nil {
 		return err
 	}

@@ -53,8 +53,8 @@ func (l Label) Namespace(name string) Label {
 	return l
 }
 
-// Cluster adds redis cluster kv pair to label
-func (l Label) Cluster(name string) Label {
+// Instance adds redis cluster kv pair to label
+func (l Label) Instance(name string) Label {
 	l[InstanceLabelKey] = name
 	return l
 }
@@ -115,10 +115,10 @@ func (l Label) IsSlave() bool {
 }
 
 // ClusterListOptions returns a cluster ListOptions filter
-func ClusterListOptions(clusterName string) metav1.ListOptions {
+func ClusterListOptions(instanceName string) metav1.ListOptions {
 	return metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(
-			New().Cluster(clusterName).Labels(),
+			New().Instance(instanceName).Labels(),
 		).String(),
 	}
 }

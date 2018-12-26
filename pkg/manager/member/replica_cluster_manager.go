@@ -255,7 +255,8 @@ func (rmm *replicaMemeberManager) getNewRedisServiceForRedis(rc *v1alpha1.Redis,
 	ns, rcName := rc.Namespace, rc.Name
 
 	svcName := svcConfig.MemberName(rcName)
-	rediLabel := svcConfig.SvcLabel(label.New().Cluster(rcName)).Labels()
+	instanceName := rc.GetLabels()[label.InstanceLabelKey]
+	rediLabel := svcConfig.SvcLabel(label.New().Instance(instanceName)).Labels()
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            svcName,
@@ -306,7 +307,7 @@ func (rmm *replicaMemeberManager) replicaIsUpgrading(set *apps.StatefulSet, rc *
 	}
 
 	instanceName := rc.GetLabels()[label.InstanceLabelKey]
-	selector, err := label.New().Cluster(instanceName).Master().Slave().Selector()
+	selector, err := label.New().Instance(instanceName).Master().Slave().Selector()
 	if err != nil {
 		return false, err
 	}
@@ -385,8 +386,10 @@ func (rmm *replicaMemeberManager) getNewReplicaStatefulSet(rc *v1alpha1.Redis) (
 		},
 	}
 
-	rediLabel := label.New().Cluster(rcName)
 	setName := controller.RedisMemberName(rcName)
+
+	instanceName := rc.GetLabels()[label.InstanceLabelKey]
+	rediLabel := label.New().Instance(instanceName)
 	storageClassName := rc.Spec.Redis.StorageClassName
 	if storageClassName == "" {
 		storageClassName = controller.DefaultStorageClassName

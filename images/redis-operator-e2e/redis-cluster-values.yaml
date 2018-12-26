@@ -25,7 +25,7 @@ services:
 
 redis:
   members: 2
-  image: localhost:5000/redis:latest
+  image: redis:latest
   logLevel: info
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,

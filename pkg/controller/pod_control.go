@@ -59,7 +59,7 @@ func (rpc *realPodControl) CreatePod(rc *v1alpha1.Redis, pod *corev1.Pod) error 
 }
 
 func (rpc *realPodControl) UpdatePod(rc *v1alpha1.Redis, pod *corev1.Pod) (*corev1.Pod, error) {
-	ns, rcName, labels := rc.GetNamespace(), rc.GetName(), rc.GetLabels()
+	ns, rcName, labels := rc.GetNamespace(), rc.GetName(), pod.GetLabels()
 	if labels == nil {
 		return pod, fmt.Errorf("pod %s/%s has empty labels, Redis: %s", ns, pod.Name, rcName)
 	}
@@ -91,6 +91,7 @@ func (rpc *realPodControl) UpdatePod(rc *v1alpha1.Redis, pod *corev1.Pod) (*core
 		if updated, err := rpc.podLister.Pods(ns).Get(rcName); err == nil {
 			// make a copy so we don't mutate the shared cache
 			pod = updated.DeepCopy()
+			pod.Labels = labels
 		} else {
 			utilruntime.HandleError(fmt.Errorf("error getting updated Redis %s/%s from lister: %v", ns, rcName, err))
 		}

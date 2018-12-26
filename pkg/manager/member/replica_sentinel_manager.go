@@ -159,7 +159,8 @@ func (smm *sentinelMemberManager) getNewSentinelServiceForRedis(rc *v1alpha1.Red
 	ns, rcName := rc.Namespace, rc.Name
 
 	svcName := svcConfig.MemberName(rcName)
-	rediLabel := svcConfig.SvcLabel(label.New().Cluster(rcName)).Labels()
+	instanceName := rc.GetLabels()[label.InstanceLabelKey]
+	rediLabel := svcConfig.SvcLabel(label.New().Instance(instanceName)).Labels()
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            svcName,
@@ -195,7 +196,7 @@ func (smm *sentinelMemberManager) sentinelIsUpgrading(set *apps.StatefulSet, rc 
 	}
 
 	instanceName := rc.GetLabels()[label.InstanceLabelKey]
-	selector, err := label.New().Cluster(instanceName).Sentinel().Selector()
+	selector, err := label.New().Instance(instanceName).Sentinel().Selector()
 	if err != nil {
 		return false, err
 	}
@@ -241,7 +242,8 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.Redis) 
 		},
 	}
 
-	sentiLabel := label.New().Cluster(rcName).Sentinel()
+	instanceName := rc.GetLabels()[label.InstanceLabelKey]
+	sentiLabel := label.New().Instance(instanceName).Sentinel()
 	setName := controller.SentinelMemberName(rcName)
 
 	sentiSet := &apps.StatefulSet{
