@@ -20,13 +20,14 @@ import (
 )
 
 type replicaMemeberManager struct {
-	setControl  controller.StatefulSetControlInterface
-	svcControl  controller.ServiceControlInterface
-	svcLister   corelisters.ServiceLister
-	setLister   appslisters.StatefulSetLister
-	podLister   corelisters.PodLister
-	podControl  controller.PodControlInterface
-	redisScaler Scaler
+	setControl      controller.StatefulSetControlInterface
+	svcControl      controller.ServiceControlInterface
+	svcLister       corelisters.ServiceLister
+	setLister       appslisters.StatefulSetLister
+	podLister       corelisters.PodLister
+	podControl      controller.PodControlInterface
+	redisScaler     Scaler
+	replicaUpgrader Upgrader
 }
 
 // ServiceConfig config to a K8s service
@@ -46,15 +47,17 @@ func NewReplicaMemberManager(
 	podLister corelisters.PodLister,
 	podControl controller.PodControlInterface,
 	setLister appslisters.StatefulSetLister,
-	redisScaler Scaler) manager.Manager {
+	redisScaler Scaler,
+	replicaUpgrader Upgrader) manager.Manager {
 	return &replicaMemeberManager{
-		setControl:  setControl,
-		svcControl:  svcControl,
-		svcLister:   svcLister,
-		podLister:   podLister,
-		podControl:  podControl,
-		setLister:   setLister,
-		redisScaler: redisScaler,
+		setControl:      setControl,
+		svcControl:      svcControl,
+		svcLister:       svcLister,
+		podLister:       podLister,
+		podControl:      podControl,
+		setLister:       setLister,
+		redisScaler:     redisScaler,
+		replicaUpgrader: replicaUpgrader,
 	}
 }
 
@@ -160,7 +163,9 @@ func (rmm *replicaMemeberManager) syncReplicaStatefulSetForRedis(rc *v1alpha1.Re
 
 	// TODO update
 	if !templateEqual(newSet.Spec.Template, oldSet.Spec.Template) || rc.Status.Replica.Phase == v1alpha1.UpgradePhase {
-
+		if err := rmm.replicaUpgrader.Upgrade(rc, oldSet, newSet); err != nil {
+			return err
+		}
 	}
 
 	if *newSet.Spec.Replicas > *oldSet.Spec.Replicas {

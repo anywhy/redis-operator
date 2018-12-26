@@ -25,6 +25,26 @@ var (
 	ClusterScoped bool
 )
 
+// RequeueError is used to requeue the item, this error type should't be considered as a real error
+type RequeueError struct {
+	s string
+}
+
+func (re *RequeueError) Error() string {
+	return re.s
+}
+
+// RequeueErrorf returns a RequeueError
+func RequeueErrorf(format string, a ...interface{}) error {
+	return &RequeueError{fmt.Sprintf(format, a...)}
+}
+
+// IsRequeueError returns whether err is a RequeueError
+func IsRequeueError(err error) bool {
+	_, ok := err.(*RequeueError)
+	return ok
+}
+
 // GetOwnerRef returns Redis's OwnerReference
 func GetOwnerRef(rc *v1alpha1.Redis) metav1.OwnerReference {
 	controller := true

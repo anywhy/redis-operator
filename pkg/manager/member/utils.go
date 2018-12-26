@@ -1,11 +1,15 @@
 package member
 
 import (
+	"fmt"
+
 	"github.com/golang/glog"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/json"
+
+	"github.com/anywhy/redis-operator/pkg/controller"
 )
 
 const (
@@ -140,4 +144,38 @@ func podinfoVolume() (corev1.VolumeMount, corev1.Volume) {
 		},
 	}
 	return m, v
+}
+
+// GetLastAppliedConfig get last applied config info from Statefulset's annotation
+func GetLastAppliedConfig(set *apps.StatefulSet) (*apps.StatefulSetSpec, *corev1.PodSpec, error) {
+	specAppliedConfig, ok := set.Annotations[LastAppliedConfigAnnotation]
+	if !ok {
+		return nil, nil, fmt.Errorf("statefulset:[%s/%s] not found spec's apply config", set.GetNamespace(), set.GetName())
+	}
+	spec := &apps.StatefulSetSpec{}
+	err := json.Unmarshal([]byte(specAppliedConfig), spec)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	podSpecAppliedConfig, ok := set.Spec.Template.Annotations[LastAppliedConfigAnnotation]
+	if !ok {
+		return nil, nil, fmt.Errorf("statefulset:[%s/%s] not found template spec's apply config", set.GetNamespace(), set.GetName())
+	}
+	podSpec := &corev1.PodSpec{}
+	err = json.Unmarshal([]byte(podSpecAppliedConfig), podSpec)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return spec, podSpec, nil
+}
+
+// setUpgradePartition set statefulSet's rolling update partition
+func setUpgradePartition(set *apps.StatefulSet, upgradeOrdinal int32) {
+	set.Spec.UpdateStrategy.RollingUpdate = &apps.RollingUpdateStatefulSetStrategy{Partition: &upgradeOrdinal}
+}
+
+func replicaPodName(rcName string, ordinal int32) string {
+	return fmt.Sprintf("%s-%d", controller.RedisMemberName(rcName), ordinal)
 }
