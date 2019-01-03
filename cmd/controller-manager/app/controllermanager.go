@@ -86,7 +86,7 @@ func Run(s *options.RedisControllerManagerOptions, stop <-chan struct{}) error {
 	}
 
 	// redis-controller
-	rcController := Redis.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
+	rcController := redis.NewController(kubeCli, cli, informerFactory, kubeInformerFactory)
 	go informerFactory.Start(stop)
 	go kubeInformerFactory.Start(stop)
 	onStarted := func(stopCh <-chan struct{}) {
