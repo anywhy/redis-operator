@@ -1,4 +1,4 @@
-package Redis
+package redis
 
 import (
 	"fmt"
@@ -84,6 +84,7 @@ func NewController(
 	pvControl := controller.NewRealPVControl(kubeCli, pvcInformer.Lister(), pvInformer.Lister(), recorder)
 
 	replicaScaler := mm.NewReplicaScaler(pvcInformer.Lister(), pvcControl)
+	replicaUpgrader := mm.NewReplicaUpgrader(podControl, podInformer.Lister())
 
 	rcc := &Controller{
 		kubeClient: kubeCli,
@@ -97,7 +98,8 @@ func NewController(
 				podInformer.Lister(),
 				podControl,
 				setInformer.Lister(),
-				replicaScaler),
+				replicaScaler,
+				replicaUpgrader),
 			mm.NewSentinelMemberManager(
 				setControl,
 				svcControl,
@@ -118,7 +120,7 @@ func NewController(
 		),
 		queue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.DefaultControllerRateLimiter(),
-			"Redis",
+			"redises",
 		),
 	}
 

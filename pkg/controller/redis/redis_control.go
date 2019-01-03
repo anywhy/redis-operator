@@ -1,4 +1,4 @@
-package Redis
+package redis
 
 import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
