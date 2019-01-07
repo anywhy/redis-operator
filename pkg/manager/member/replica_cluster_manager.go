@@ -28,6 +28,7 @@ type replicaMemeberManager struct {
 	podControl      controller.PodControlInterface
 	redisScaler     Scaler
 	replicaUpgrader Upgrader
+	haManager       manager.Manager
 }
 
 // ServiceConfig config to a K8s service
@@ -49,7 +50,7 @@ func NewReplicaMemberManager(
 	setLister appslisters.StatefulSetLister,
 	redisScaler Scaler,
 	replicaUpgrader Upgrader) manager.Manager {
-	return &replicaMemeberManager{
+	rmm := &replicaMemeberManager{
 		setControl:      setControl,
 		svcControl:      svcControl,
 		svcLister:       svcLister,
@@ -59,6 +60,8 @@ func NewReplicaMemberManager(
 		redisScaler:     redisScaler,
 		replicaUpgrader: replicaUpgrader,
 	}
+	rmm.haManager = NewSentinelMemberManager(setControl, svcControl, svcLister, podLister, setLister)
+	return rmm
 }
 
 // Sync	implements redis logic for syncing Redis.

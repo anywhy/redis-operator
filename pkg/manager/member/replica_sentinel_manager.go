@@ -42,11 +42,14 @@ func NewSentinelMemberManager(
 
 // Sync	implements sentinel logic for syncing Redis.
 func (smm *sentinelMemberManager) Sync(rc *v1alpha1.Redis) error {
-	// Sync sentinel service
-	if err := smm.syncSentinelServiceForRedis(rc); err != nil {
-		return err
+	if rc.Spec.Mode == v1alpha1.ReplicaCluster {
+		// Sync sentinel service
+		if err := smm.syncSentinelServiceForRedis(rc); err != nil {
+			return err
+		}
+		return smm.syncSentinelStatefulSetForRedis(rc)
 	}
-	return smm.syncSentinelStatefulSetForRedis(rc)
+	return nil
 }
 
 func (smm *sentinelMemberManager) syncSentinelStatefulSetForRedis(rc *v1alpha1.Redis) error {
@@ -82,13 +85,13 @@ func (smm *sentinelMemberManager) syncSentinelStatefulSetForRedis(rc *v1alpha1.R
 
 func (smm *sentinelMemberManager) syncSentinelServiceForRedis(rc *v1alpha1.Redis) error {
 	svcList := []ServiceConfig{
-		{
-			Name:       "sentinel",
-			Port:       16379,
-			SvcLabel:   func(l label.Label) label.Label { return l.Sentinel() },
-			MemberName: controller.SentinelMemberName,
-			Headless:   false,
-		},
+		// {
+		// 	Name:       "sentinel",
+		// 	Port:       16379,
+		// 	SvcLabel:   func(l label.Label) label.Label { return l.Sentinel() },
+		// 	MemberName: controller.SentinelMemberName,
+		// 	Headless:   false,
+		// },
 		{
 			Name:       "peer",
 			Port:       16379,
@@ -225,11 +228,13 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.Redis) 
 	ns, rcName := rc.GetNamespace(), rc.GetName()
 	sentiConfigMap := controller.SentinelMemberName(rcName)
 
+	podMount, podVolume := podinfoVolume()
 	volMounts := []corev1.VolumeMount{
+		podMount,
 		{Name: "configfile", MountPath: "/etc/redis"},
-		// {Name: "log-dir", MountPath: "/var/log/sentinel"},
 	}
 	vols := []corev1.Volume{
+		podVolume,
 		{Name: "configfile",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{

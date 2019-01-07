@@ -21,7 +21,6 @@ type ControlInterface interface {
 type defaultRedisControl struct {
 	rcControl                 controller.RedisControlInterface
 	replicaMemberManager      manager.Manager
-	sentinelMemberManager     manager.Manager
 	redisClusterMemberManager manager.Manager
 	reclaimPolicyManager      manager.Manager
 	metaManager               manager.Manager
@@ -33,7 +32,6 @@ type defaultRedisControl struct {
 func NewDefaultRedisControl(
 	rcControl controller.RedisControlInterface,
 	replicaMemberManager manager.Manager,
-	sentinelMemberManager manager.Manager,
 	redisClusterMemberManager manager.Manager,
 	reclaimPolicyManager manager.Manager,
 	metaManager manager.Manager,
@@ -41,7 +39,6 @@ func NewDefaultRedisControl(
 	return &defaultRedisControl{
 		rcControl,
 		replicaMemberManager,
-		sentinelMemberManager,
 		redisClusterMemberManager,
 		reclaimPolicyManager,
 		metaManager,

@@ -100,13 +100,6 @@ func NewController(
 				setInformer.Lister(),
 				replicaScaler,
 				replicaUpgrader),
-			mm.NewSentinelMemberManager(
-				setControl,
-				svcControl,
-				svcInformer.Lister(),
-				podInformer.Lister(),
-				setInformer.Lister(),
-			),
 			nil, nil,
 			meta.NewMetaManager(
 				pvcInformer.Lister(),
