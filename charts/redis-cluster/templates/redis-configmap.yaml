@@ -15,3 +15,11 @@ data:
     {{- else }}
 {{ tuple "config/_redis-config.tpl" }}
     {{- end -}}
+{{- if and (.Values.redis.mode) (eq .Values.redis.mode "replica") (gt .Values.redis.members 2) }}
+  sentinel-config-file: |-
+    {{- if .Values.sentinel.config }}
+{{ .Values.sentinel.config | indent 4 }}
+    {{- else }}
+{{ tuple "config/_redis-sentinel-config.tpl" }}
+    {{- end -}}
+{{- end }}

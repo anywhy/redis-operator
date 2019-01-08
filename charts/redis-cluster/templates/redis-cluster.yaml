@@ -10,12 +10,12 @@ metadata:
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
   pvReclaimPolicy: {{ .Values.pvReclaimPolicy }}
-  mode: {{.Values.mode | default "replica"}}
+  mode: {{.Values.redis.mode | default "replica"}}
   services:
 {{ toYaml .Values.services | indent 4 }}
   schedulerName: {{ .Values.schedulerName | default "default-scheduler" }}
   redis:
-    members: {{ .Values.redis.members }}
+    members: {{ .Values.redis.members | default 1 }}
     image: {{ .Values.redis.image }}
     imagePullPolicy: {{ .Values.redis.imagePullPolicy | default "IfNotPresent" }}
   {{- if .Values.redis.storageClassName }}
@@ -31,7 +31,30 @@ spec:
     nodeSelector:
 {{ toYaml .Values.redis.nodeSelector | indent 6 }}
   {{- end }}
+    nodeSelectorRequired: {{ .Values.nodeSelectorRequired | default true }}
   {{- if .Values.redis.tolerations }}
     tolerations:
 {{ toYaml .Values.redis.tolerations | indent 4 }}
   {{- end }}
+{{- if and (eq .Values.redis.mode "replica") (gt .Values.redis.members 2) }}
+  sentinel:
+    schedulerName: {{ .Values.schedulerName | default "default-scheduler" }}
+    masterName: {{ .Values.sentinel.masterName | defalut .Values.clusterName }}
+    replicas: {{ .Values.sentinel.replicas | default 3 }}
+  {{- if .Values.sentinel.resources }}
+{{ toYaml .Values.sentinel.resources | indent 4 }}
+  {{- end }}
+  {{- if .Values.sentinel.password }}
+    password: {{ .Values.sentinel.password }}
+  {{- end }}
+  {{- if .Values.redis.nodeSelector }}
+    nodeSelector:
+{{ toYaml .Values.redis.nodeSelector | indent 6 }}
+  {{- end }}
+    nodeSelectorRequired: {{ .Values.nodeSelectorRequired | default true }}
+  {{- if .Values.redis.tolerations }}
+    tolerations:
+{{ toYaml .Values.redis.tolerations | indent 4 }}
+  {{- end }}
+ {{- end }}
+ 

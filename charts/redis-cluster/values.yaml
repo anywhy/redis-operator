@@ -24,6 +24,7 @@ services:
     type: ClusterIP
 
 redis:
+  mode: replica
   members: 2
   image: redis:latest
   logLevel: info
@@ -62,4 +63,37 @@ redis:
   #   operator: Equal
   #   value: tidb
   #   effect: "NoSchedule"
+
+# Replica cluster sentinel
+sentinel:
+  # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
+  # different classes might map to quality-of-service levels, or to backup policies,
+  # or to arbitrary policies determined by the cluster administrators.
+  # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
+  storageClassName: local-storage
+  resources:
+    # limits:
+    #   cpu: 100m
+    #   memory: 100mi
+    # requests:
+    #   cpu: 50m
+    #   memory: 50mi
+  # nodeSelector is used for scheduling pod,
+  # if nodeSelectorRequired is true, all the following labels must be matched
+  nodeSelector: {}
+    # kind: redis
+    # # zone is comma separated availability zone list
+    # zone: cn-bj1-01,cn-bj1-02
+    # # region is comma separated region list
+    # region: cn-bj1
+  # Tolerations are applied to pods, and allow pods to schedule onto nodes with matching taints.
+  # refer to https://kubernetes.io/docs/concepts/configuration/taint-and-toleration
+  tolerations: {}
+  # - key: node-role
+  #   operator: Equal
+  #   value: tidb
+  #   effect: "NoSchedule"
+
+
+    
 

@@ -16,7 +16,8 @@ type RedisControllerManagerOptions struct {
 	Namespace string
 
 	// PrintVersion bool
-	Workers int
+	Workers      int
+	AutoFailover bool
 
 	// ConfigFile is the location of the scheduler server's configuration file.
 	ConfigFile string
@@ -45,6 +46,7 @@ func (s *RedisControllerManagerOptions) AddFlags(pflag *pflag.FlagSet) {
 	pflag.StringVar(&s.Master, "master", s.Master, "k8s master addr")
 	pflag.StringVar(&s.ConfigFile, "config", s.ConfigFile, "The path to the configuration file. Flags override values in this file.")
 	// pflag.BoolVar(&s.PrintVersion, "version", false, "Show version and quit")
+	pflag.BoolVar(&s.AutoFailover, "auto-failover", true, "Replica cluster auto failover")
 	pflag.StringVar(&s.Namespace, "namespace", s.Namespace, "The Operator deployment of k8s namespce")
 	pflag.BoolVar(&controller.ClusterScoped, "cluster-scoped", true, "Whether redis-operator should manage kubernetes cluster wide Redis Clusters")
 	pflag.StringVar(&s.Kubeconfig, "kubeconfig", "", "Config k8s config file path")

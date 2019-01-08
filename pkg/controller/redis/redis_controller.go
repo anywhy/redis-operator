@@ -61,6 +61,7 @@ func NewController(
 	cli versioned.Interface,
 	informerFactory informers.SharedInformerFactory,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
+	autoFailover bool,
 ) *Controller {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(glog.Infof)
@@ -85,6 +86,7 @@ func NewController(
 
 	replicaScaler := mm.NewReplicaScaler(pvcInformer.Lister(), pvcControl)
 	replicaUpgrader := mm.NewReplicaUpgrader(podControl, podInformer.Lister())
+	replicaFailover := mm.NewReplicaFailover(nil)
 
 	rcc := &Controller{
 		kubeClient: kubeCli,
@@ -99,7 +101,9 @@ func NewController(
 				podControl,
 				setInformer.Lister(),
 				replicaScaler,
-				replicaUpgrader),
+				replicaUpgrader,
+				autoFailover,
+				replicaFailover),
 			nil, nil,
 			meta.NewMetaManager(
 				pvcInformer.Lister(),

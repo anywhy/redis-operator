@@ -93,12 +93,17 @@ type RedisInstanceSpec struct {
 
 // RedisSentinelSpec redis sentinel attributes
 type RedisSentinelSpec struct {
-	ContainerSpec
-	Replicas         int32               `json:"replicas,omitempty"`
-	Quorum           int32               `json:"quorum,omitempty"`
-	NodeSelector     map[string]string   `json:"nodeSelector,omitempty"`
-	StorageClassName string              `json:"storageClassName,omitempty"`
-	Tolerations      []corev1.Toleration `json:"tolerations,omitempty"`
+	Replicas   int32  `json:"replicas,omitempty"`
+	MasterName string `json:"masterName,omitempty"`
+	Password   string `json:"password,omitempty"`
+
+	Requests             *ResourceRequirement `json:"requests,omitempty"`
+	Limits               *ResourceRequirement `json:"limits,omitempty"`
+	StorageClassName     string               `json:"storageClassName,omitempty"`
+	Tolerations          []corev1.Toleration  `json:"tolerations,omitempty"`
+	SchedulerName        string               `json:"schedulerName,omitempty"`
+	NodeSelector         map[string]string    `json:"nodeSelector,omitempty"`
+	NodeSelectorRequired bool                 `json:"nodeSelectorRequired,omitempty"`
 }
 
 // RedisStatus represents the current status of a redis cluster.

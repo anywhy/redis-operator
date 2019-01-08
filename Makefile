@@ -25,3 +25,16 @@ build: controller-manager
 
 controller-manager:
 	$(GO) -ldflags '$(LDFLAGS)' -o images/redis-operator/bin/redis-controller-manager cmd/controller-manager/controller-manager.go
+
+e2e-docker:
+	mkdir -p images/redis-operator-e2e/bin
+	mv tests/e2e/e2e.test images/redis-operator-e2e/bin/
+	[[ -d images/redis-operator-e2e/redis-operator ]] && rm -r images/redis-operator-e2e/redis-operator || true
+	[[ -d images/redis-operator-e2e/redis-cluster ]] && rm -r images/redis-operator-e2e/redis-cluster || true
+	cp -r charts/redis-operator images/redis-operator-e2e/
+	cp -r charts/redis-cluster images/redis-operator-e2e/
+	#docker build -t "${DOCKER_REGISTRY}/redis-operator-e2e:latest" images/redis-operator-e2e
+
+test:
+	@echo "Run unit tests"
+	@$(GOTEST) ./pkg/... && echo "\nUnit tests run successfully!"

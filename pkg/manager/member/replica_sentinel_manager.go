@@ -226,7 +226,7 @@ redis-server /etc/redis/sentinel.conf --sentinel
 
 func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.Redis) (*apps.StatefulSet, error) {
 	ns, rcName := rc.GetNamespace(), rc.GetName()
-	sentiConfigMap := controller.SentinelMemberName(rcName)
+	sentiConfigMap := controller.RedisMemberName(rcName)
 
 	podMount, podVolume := podinfoVolume()
 	volMounts := []corev1.VolumeMount{
@@ -241,7 +241,7 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.Redis) 
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: sentiConfigMap,
 					},
-					Items: []corev1.KeyToPath{{Key: "config-file", Path: "sentinel.conf"}},
+					Items: []corev1.KeyToPath{{Key: "sentinel-config-file", Path: "sentinel.conf"}},
 				},
 			},
 		},
@@ -271,12 +271,12 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.Redis) 
 				Spec: corev1.PodSpec{
 					Affinity: util.AffinityForNodeSelector(ns,
 						true, sentiLabel.Labels(),
-						rc.Spec.Sentinel.NodeSelector),
+						rc.Spec.Redis.NodeSelector),
 					Containers: []corev1.Container{
 						{
 							Name:            "redis-sentinel",
-							Image:           rc.Spec.Sentinel.Image,
-							ImagePullPolicy: rc.Spec.Sentinel.ImagePullPolicy,
+							Image:           rc.Spec.Redis.Image,
+							ImagePullPolicy: rc.Spec.Redis.ImagePullPolicy,
 							Command: []string{
 								"bash", "-c", sentinelCmd,
 							},
@@ -288,7 +288,10 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.Redis) 
 								},
 							},
 							VolumeMounts: volMounts,
-							Resources:    util.ResourceRequirement(rc.Spec.Sentinel.ContainerSpec),
+							Resources: util.ResourceRequirement(v1alpha1.ContainerSpec{
+								Requests: rc.Spec.Sentinel.Requests,
+								Limits:   rc.Spec.Sentinel.Limits,
+							}),
 							Env: []corev1.EnvVar{
 								{
 									Name:  "CLUSTER_NAME",

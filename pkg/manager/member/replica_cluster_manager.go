@@ -28,7 +28,9 @@ type replicaMemeberManager struct {
 	podControl      controller.PodControlInterface
 	redisScaler     Scaler
 	replicaUpgrader Upgrader
-	haManager       manager.Manager
+	autoFailover    bool
+	replicaFailover Failover
+	sentinelManager manager.Manager
 }
 
 // ServiceConfig config to a K8s service
@@ -49,7 +51,9 @@ func NewReplicaMemberManager(
 	podControl controller.PodControlInterface,
 	setLister appslisters.StatefulSetLister,
 	redisScaler Scaler,
-	replicaUpgrader Upgrader) manager.Manager {
+	replicaUpgrader Upgrader,
+	autoFailover    bool,
+	replicaFailover Failover) manager.Manager {
 	rmm := &replicaMemeberManager{
 		setControl:      setControl,
 		svcControl:      svcControl,
@@ -59,8 +63,10 @@ func NewReplicaMemberManager(
 		setLister:       setLister,
 		redisScaler:     redisScaler,
 		replicaUpgrader: replicaUpgrader,
+		autoFailover:    autoFailover,
+		replicaFailover: replicaFailover,
 	}
-	rmm.haManager = NewSentinelMemberManager(setControl, svcControl, svcLister, podLister, setLister)
+	rmm.sentinelManager = NewSentinelMemberManager(setControl, svcControl, svcLister, podLister, setLister)
 	return rmm
 }
 
