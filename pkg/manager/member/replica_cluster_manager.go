@@ -52,7 +52,7 @@ func NewReplicaMemberManager(
 	setLister appslisters.StatefulSetLister,
 	redisScaler Scaler,
 	replicaUpgrader Upgrader,
-	autoFailover    bool,
+	autoFailover bool,
 	replicaFailover Failover) manager.Manager {
 	rmm := &replicaMemeberManager{
 		setControl:      setControl,
@@ -270,7 +270,7 @@ func (rmm *replicaMemeberManager) getNewRedisServiceForRedis(rc *v1alpha1.Redis,
 
 	svcName := svcConfig.MemberName(rcName)
 	instanceName := rc.GetLabels()[label.InstanceLabelKey]
-	rediLabel := svcConfig.SvcLabel(label.New().Instance(instanceName)).Labels()
+	rediLabel := svcConfig.SvcLabel(label.New().Instance(instanceName)).Replica().Labels()
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            svcName,
@@ -321,7 +321,7 @@ func (rmm *replicaMemeberManager) replicaIsUpgrading(set *apps.StatefulSet, rc *
 	}
 
 	instanceName := rc.GetLabels()[label.InstanceLabelKey]
-	selector, err := label.New().Instance(instanceName).Master().Slave().Selector()
+	selector, err := label.New().Instance(instanceName).Replica().Selector()
 	if err != nil {
 		return false, err
 	}
@@ -403,7 +403,7 @@ func (rmm *replicaMemeberManager) getNewReplicaStatefulSet(rc *v1alpha1.Redis) (
 	setName := controller.RedisMemberName(rcName)
 
 	instanceName := rc.GetLabels()[label.InstanceLabelKey]
-	rediLabel := label.New().Instance(instanceName)
+	rediLabel := label.New().Instance(instanceName).Replica()
 	storageClassName := rc.Spec.Redis.StorageClassName
 	if storageClassName == "" {
 		storageClassName = controller.DefaultStorageClassName
@@ -478,6 +478,7 @@ func (rmm *replicaMemeberManager) getNewReplicaStatefulSet(rc *v1alpha1.Redis) (
 					Tolerations:   rc.Spec.Redis.Tolerations,
 				},
 			},
+			ServiceName:         controller.RedisPeerMemberName(rcName),
 			PodManagementPolicy: apps.ParallelPodManagement,
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 				pvc,

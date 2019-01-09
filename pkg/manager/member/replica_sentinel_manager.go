@@ -305,6 +305,7 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.Redis) 
 					Tolerations:   rc.Spec.Sentinel.Tolerations,
 				},
 			},
+			ServiceName:         controller.SentinelPeerMemberName(rcName),
 			PodManagementPolicy: apps.ParallelPodManagement,
 		},
 	}

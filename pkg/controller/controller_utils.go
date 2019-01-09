@@ -102,6 +102,11 @@ func SentinelPeerMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-sentinel-peer", clusterName)
 }
 
+// RedisPeerMemberName return redis peer name for redis cluster
+func RedisPeerMemberName(clusterName string) string {
+	return fmt.Sprintf("%s-redis-peer", clusterName)
+}
+
 // RedisMemberName return redis name for redis cluster
 func RedisMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-redis", clusterName)

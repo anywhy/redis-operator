@@ -24,9 +24,11 @@ const (
 	NamespaceLabelKey string = "app.kubernetes.io/namespace"
 
 	// AnnPodNameKey is pod name annotation key used in PV/PVC for synchronizing redis cluster meta info
-	AnnPodNameKey string = "redis.anywhy.github/pod-name"
+	AnnPodNameKey string = "anywhy.github/pod-name"
 	// ClusterGroupIDLabelKey is pod name annotation key used for redis cluster group synchronizing redis cluster meta info
-	ClusterGroupIDLabelKey string = "redis.anywhy.github/cluster-group-id"
+	ClusterGroupIDLabelKey string = "anywhy.github/cluster-group-id"
+	// ClusterModeLabelKey is redis cluster mode
+	ClusterModeLabelKey string = "anywhy.github/cluster-mode"
 
 	// MasterLabelKey redis master role label key
 	MasterLabelKey string = "master"
@@ -34,6 +36,11 @@ const (
 	SlaveLabelKey string = "slave"
 	// SentinelLabelKey redis sentinel role label key
 	SentinelLabelKey string = "sentinel"
+
+	// ReplicaClusterLabelKey means that redis cluster is master/slave
+	ReplicaClusterLabelKey string = "replica"
+	// RedisClusterLabelKey means redis cluster is shard mode
+	RedisClusterLabelKey string = "cluster"
 )
 
 // Label is the label field in metadatas
@@ -63,6 +70,22 @@ func (l Label) Instance(name string) Label {
 func (l Label) Component(name string) Label {
 	l[ComponentLabelKey] = name
 	return l
+}
+
+// ClusterMode add redis mode kv pair to label
+func (l Label) ClusterMode(mode string) Label {
+	l[ClusterModeLabelKey] = mode
+	return l
+}
+
+// Replica replica cluster
+func (l Label) Replica() Label {
+	return l.ClusterMode(ReplicaClusterLabelKey)
+}
+
+// RedisCluster redis cluster
+func (l Label) RedisCluster() Label {
+	return l.ClusterMode(RedisClusterLabelKey)
 }
 
 // ComponentType returns component type
