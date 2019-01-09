@@ -86,7 +86,7 @@ func NewController(
 
 	replicaScaler := mm.NewReplicaScaler(pvcInformer.Lister(), pvcControl)
 	replicaUpgrader := mm.NewReplicaUpgrader(podControl, podInformer.Lister())
-	replicaFailover := mm.NewReplicaFailover(nil)
+	replicaFailover := mm.NewReplicaFailover(controller.NewDefaultHAControl(), podInformer.Lister(), podControl)
 
 	rcc := &Controller{
 		kubeClient: kubeCli,

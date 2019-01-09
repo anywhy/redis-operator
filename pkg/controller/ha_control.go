@@ -25,6 +25,11 @@ type defaultHAControl struct {
 	haClients map[string]*haWatcher
 }
 
+// NewDefaultHAControl returns a defaultHAControl instance
+func NewDefaultHAControl() HAControlInterface {
+	return &defaultHAControl{haClients: make(map[string]*haWatcher)}
+}
+
 type haWatcher struct {
 	mutex sync.Mutex
 
