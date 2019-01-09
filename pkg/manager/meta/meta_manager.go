@@ -1,6 +1,9 @@
 package meta
 
 import (
+	"errors"
+
+	corev1 "k8s.io/api/core/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 
 	"github.com/anywhy/redis-operator/pkg/apis/redis/v1alpha1"
@@ -8,6 +11,8 @@ import (
 	"github.com/anywhy/redis-operator/pkg/label"
 	"github.com/anywhy/redis-operator/pkg/manager"
 )
+
+var errPVCNotFound = errors.New("PVC is not found")
 
 type metaManager struct {
 	pvcLister  corelisters.PersistentVolumeClaimLister
@@ -47,7 +52,7 @@ func (mm *metaManager) Sync(rc *v1alpha1.Redis) error {
 func (mm *metaManager) syncReplicaCluster(rc *v1alpha1.Redis) error {
 	ns, labels := rc.GetNamespace(), rc.GetLabels()
 	instanceName := labels[label.InstanceLabelKey]
-	l, err := label.New().Instance(instanceName).Selector()
+	l, err := label.New().Instance(instanceName).Replica().Selector()
 	if err != nil {
 		return err
 	}
@@ -65,6 +70,30 @@ func (mm *metaManager) syncReplicaCluster(rc *v1alpha1.Redis) error {
 			updatePod.Labels[label.ComponentLabelKey] != label.SlaveLabelKey {
 			continue
 		}
+		// update meta info for pvc
+		pvc, err := mm.resolvePVCFromPod(pod)
+		if err != nil {
+			return err
+		}
+
+		_, err = mm.pvcControl.UpdatePVC(rc, pvc, pod)
+		if err != nil {
+			return err
+		}
+
+		if pvc.Spec.VolumeName == "" {
+			continue
+		}
+
+		// update meta info for pv
+		pv, err := mm.pvLister.Get(pvc.Spec.VolumeName)
+		if err != nil {
+			return err
+		}
+		_, err = mm.pvControl.UpdatePV(rc, pv)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -72,4 +101,28 @@ func (mm *metaManager) syncReplicaCluster(rc *v1alpha1.Redis) error {
 
 func (mm *metaManager) syncRedisCluster(rc *v1alpha1.Redis) error {
 	return nil
+}
+
+func (mm *metaManager) resolvePVCFromPod(pod *corev1.Pod) (*corev1.PersistentVolumeClaim, error) {
+	var pvcName string
+	for _, vol := range pod.Spec.Volumes {
+		switch vol.Name {
+		case v1alpha1.RedisMemberType.String():
+			if vol.PersistentVolumeClaim != nil {
+				pvcName = vol.PersistentVolumeClaim.ClaimName
+				break
+			}
+		default:
+			continue
+		}
+	}
+	if len(pvcName) == 0 {
+		return nil, errPVCNotFound
+	}
+
+	pvc, err := mm.pvcLister.PersistentVolumeClaims(pod.Namespace).Get(pvcName)
+	if err != nil {
+		return nil, err
+	}
+	return pvc, nil
 }

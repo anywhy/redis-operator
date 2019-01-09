@@ -34,7 +34,7 @@ func (rf *replicaFailover) Failover(rc *v1alpha1.Redis) {
 			return err
 		}
 
-		pods, err := rf.podLister.List(selector)
+		pods, err := rf.podLister.Pods(rc.Namespace).List(selector)
 		if err != nil {
 			glog.Errorf("Replica cluster HA switch master error: %#v", err)
 			return err
@@ -49,6 +49,7 @@ func (rf *replicaFailover) Failover(rc *v1alpha1.Redis) {
 					glog.Errorf("Replica cluster HA switch master error: %#v", err)
 					return err
 				}
+				rc.Status.Replica.MasterName = pod.GetName()
 			} else if !strings.EqualFold(master, addr) && pod.Labels[label.ComponentLabelKey] != label.MasterLabelKey {
 				podCopy := pod.DeepCopy()
 				podCopy.Labels[label.ComponentLabelKey] = label.SlaveLabelKey
