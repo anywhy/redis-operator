@@ -115,11 +115,6 @@ func (in *RedisInstanceSpec) DeepCopyInto(out *RedisInstanceSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.Services != nil {
-		in, out := &in.Services, &out.Services
-		*out = make([]Service, len(*in))
-		copy(*out, *in)
-	}
 	return
 }
 
@@ -219,6 +214,11 @@ func (in *RedisSpec) DeepCopyInto(out *RedisSpec) {
 	*out = *in
 	in.Redis.DeepCopyInto(&out.Redis)
 	in.Sentinel.DeepCopyInto(&out.Sentinel)
+	if in.Services != nil {
+		in, out := &in.Services, &out.Services
+		*out = make([]Service, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

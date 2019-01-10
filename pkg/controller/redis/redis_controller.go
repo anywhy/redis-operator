@@ -104,7 +104,12 @@ func NewController(
 				replicaUpgrader,
 				autoFailover,
 				replicaFailover),
-			nil, nil,
+			nil,
+			meta.NewReclaimPolicyManager(
+				pvcInformer.Lister(),
+				pvInformer.Lister(),
+				pvControl,
+			),
 			meta.NewMetaManager(
 				pvcInformer.Lister(),
 				pvcControl,

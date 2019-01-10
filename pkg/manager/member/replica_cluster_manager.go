@@ -294,7 +294,7 @@ func (rmm *replicaMemeberManager) getNewRedisServiceForRedis(rc *v1alpha1.Redis,
 	if svcConfig.Headless {
 		svc.Spec.ClusterIP = "None"
 	} else {
-		svc.Spec.Type = controller.GetServiceType(rc.Spec.Redis.Services, v1alpha1.RedisMemberType.String())
+		svc.Spec.Type = controller.GetServiceType(rc.Spec.Services, v1alpha1.RedisMemberType.String())
 	}
 
 	return svc

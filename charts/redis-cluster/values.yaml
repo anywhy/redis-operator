@@ -71,7 +71,7 @@ sentinel:
   # or to arbitrary policies determined by the cluster administrators.
   # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
   storageClassName: local-storage
-  resources:
+  # resources:
     # limits:
     #   cpu: 100m
     #   memory: 100mi

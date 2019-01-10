@@ -187,7 +187,7 @@ func (smm *sentinelMemberManager) getNewSentinelServiceForRedis(rc *v1alpha1.Red
 	if svcConfig.Headless {
 		svc.Spec.ClusterIP = "None"
 	} else {
-		svc.Spec.Type = controller.GetServiceType(rc.Spec.Redis.Services, v1alpha1.SentinelMemberType.String())
+		svc.Spec.Type = controller.GetServiceType(rc.Spec.Services, v1alpha1.SentinelMemberType.String())
 	}
 
 	return svc

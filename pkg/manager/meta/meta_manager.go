@@ -126,3 +126,5 @@ func (mm *metaManager) resolvePVCFromPod(pod *corev1.Pod) (*corev1.PersistentVol
 	}
 	return pvc, nil
 }
+
+var _ manager.Manager = &metaManager{}

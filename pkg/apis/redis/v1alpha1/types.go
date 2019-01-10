@@ -70,6 +70,10 @@ type RedisSpec struct {
 	Redis RedisInstanceSpec `json:"redis"`
 
 	Sentinel RedisSentinelSpec `json:"sentinel,omitempty"`
+
+	// Services list non-headless services type used in Redis
+	Services        []Service                            `json:"services,omitempty"`
+	PVReclaimPolicy corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
 }
 
 // RedisInstanceSpec redis instance attributes
@@ -85,10 +89,6 @@ type RedisInstanceSpec struct {
 	StorageClassName     string              `json:"storageClassName,omitempty"`
 	Tolerations          []corev1.Toleration `json:"tolerations,omitempty"`
 	SchedulerName        string              `json:"schedulerName,omitempty"`
-
-	// Services list non-headless services type used in Redis
-	Services        []Service                            `json:"services,omitempty"`
-	PVReclaimPolicy corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
 }
 
 // RedisSentinelSpec redis sentinel attributes

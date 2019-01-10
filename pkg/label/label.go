@@ -88,6 +88,11 @@ func (l Label) RedisCluster() Label {
 	return l.ClusterMode(RedisClusterLabelKey)
 }
 
+// ClusterModeType return cluster mode
+func (l Label) ClusterModeType() string {
+	return l[ClusterModeLabelKey]
+}
+
 // ComponentType returns component type
 func (l Label) ComponentType() string {
 	return l[ComponentLabelKey]
