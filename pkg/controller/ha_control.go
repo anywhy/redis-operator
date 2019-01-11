@@ -44,9 +44,6 @@ func (w *haWatcher) unWatched() {
 }
 
 func (w *haWatcher) watchSentinels(sentinels []string, watchCallback func(master string) error) {
-	w.mutex.Lock()
-	defer w.mutex.Unlock()
-
 	// if wtached return
 	if w.wtached {
 		return
