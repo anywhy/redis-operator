@@ -87,7 +87,7 @@ func (w *haWatcher) watchSentinels(sentinels []string, watchCallback func(master
 					timeout := time.Second * 5
 					master, err := p.Master(sentinels, timeout)
 					if err != nil {
-						glog.Warningf("[%p] fetch group masters failed(%#v)", w, err)
+						glog.Warningf("[%p] fetch replica cluster masters failed(%#v)", w, err)
 					} else {
 						if !p.IsCanceled() {
 							if master != "" && (watchCallback(master) != nil) {
