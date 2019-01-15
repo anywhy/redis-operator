@@ -111,3 +111,23 @@ func RedisPeerMemberName(clusterName string) string {
 func RedisMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-redis", clusterName)
 }
+
+// requestTracker is used by unit test for mocking request error
+type requestTracker struct {
+	requests int
+	err      error
+	after    int
+}
+
+func (rt *requestTracker) errorReady() bool {
+	return rt.err != nil && rt.requests >= rt.after
+}
+
+func (rt *requestTracker) inc() {
+	rt.requests++
+}
+
+func (rt *requestTracker) reset() {
+	rt.err = nil
+	rt.after = 0
+}

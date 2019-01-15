@@ -9,8 +9,10 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 
@@ -132,3 +134,100 @@ func (rpc *realPodControl) recordPodEvent(verb string, rc *v1alpha1.Redis, pod *
 }
 
 var _ PodControlInterface = &realPodControl{}
+
+var (
+	// TestName name label
+	TestName = "redis-cluster"
+	// TestComponentName component label for instance
+	TestComponentName = "master"
+	// TestClusterModeName component label cluster mode
+	TestClusterModeName = "replica"
+	// TestManagedByName controller by redis
+	TestManagedByName = "redis-operator"
+	// TestClusterName cluster name
+	TestClusterName = "test"
+)
+
+// FakePodControl is a fake PodControlInterface
+type FakePodControl struct {
+	PodIndexer        cache.Indexer
+	createPodTracker  requestTracker
+	updatePodTracker  requestTracker
+	deletePodTracker  requestTracker
+	getClusterTracker requestTracker
+}
+
+// NewFakePodControl returns a FakePodControl
+func NewFakePodControl(podInformer coreinformers.PodInformer) *FakePodControl {
+	return &FakePodControl{
+		podInformer.Informer().GetIndexer(),
+		requestTracker{0, nil, 0},
+		requestTracker{0, nil, 0},
+		requestTracker{0, nil, 0},
+		requestTracker{0, nil, 0},
+	}
+}
+
+func (fpc *FakePodControl) setCreatePodError(err error, after int) {
+	fpc.createPodTracker.err = err
+	fpc.createPodTracker.after = after
+}
+
+// SetUpdatePodError sets the error attributes of updatePodTracker
+func (fpc *FakePodControl) SetUpdatePodError(err error, after int) {
+	fpc.updatePodTracker.err = err
+	fpc.updatePodTracker.after = after
+}
+
+// SetDeletePodError sets the error attributes of deletePodTracker
+func (fpc *FakePodControl) SetDeletePodError(err error, after int) {
+	fpc.deletePodTracker.err = err
+	fpc.deletePodTracker.after = after
+}
+
+// SetGetClusterError sets the error attributes of getClusterTracker
+func (fpc *FakePodControl) SetGetClusterError(err error, after int) {
+	fpc.getClusterTracker.err = err
+	fpc.getClusterTracker.after = after
+}
+
+// CreatePod create pod
+func (fpc *FakePodControl) CreatePod(_ *v1alpha1.Redis, pod *corev1.Pod) error {
+	defer fpc.createPodTracker.inc()
+	if fpc.createPodTracker.errorReady() {
+		defer fpc.createPodTracker.reset()
+		return fpc.createPodTracker.err
+	}
+
+	return fpc.PodIndexer.Add(pod)
+}
+
+// DeletePod delete pod
+func (fpc *FakePodControl) DeletePod(_ *v1alpha1.Redis, pod *corev1.Pod) error {
+	defer fpc.deletePodTracker.inc()
+	if fpc.deletePodTracker.errorReady() {
+		defer fpc.deletePodTracker.reset()
+		return fpc.deletePodTracker.err
+	}
+
+	return fpc.PodIndexer.Delete(pod)
+}
+
+// UpdatePod update pod info
+func (fpc *FakePodControl) UpdatePod(_ *v1alpha1.Redis, pod *corev1.Pod) (*corev1.Pod, error) {
+	defer fpc.updatePodTracker.inc()
+	if fpc.updatePodTracker.errorReady() {
+		defer fpc.updatePodTracker.reset()
+		return nil, fpc.updatePodTracker.err
+	}
+
+	setIfNotEmpty(pod.Labels, label.NameLabelKey, TestName)
+	setIfNotEmpty(pod.Labels, label.ComponentLabelKey, TestComponentName)
+	setIfNotEmpty(pod.Labels, label.ManagedByLabelKey, TestManagedByName)
+	setIfNotEmpty(pod.Labels, label.InstanceLabelKey, TestClusterName)
+	setIfNotEmpty(pod.Labels, label.ClusterModeLabelKey, TestClusterModeName)
+
+	return pod, fpc.PodIndexer.Update(pod)
+}
+
+var _ PodControlInterface = &FakePodControl{}
