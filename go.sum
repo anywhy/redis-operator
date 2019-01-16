@@ -83,6 +83,12 @@ k8s.io/apiserver v0.0.0-20181103082535-b4fba3b8a3fc h1:0eoV045yTeceUAE/KMbAnw81v
 k8s.io/apiserver v0.0.0-20181103082535-b4fba3b8a3fc/go.mod h1:6bqaTSOSJavUIXUtfaR9Os9JtTCm8ZqH2SUl2S60C4w=
 k8s.io/client-go v0.0.0-20180424211516-33f2870a2b83 h1:zFG4vdZo+7VePgo3YFfw+ZZURiwY0BGAzdt20E6X9M0=
 k8s.io/client-go v0.0.0-20180424211516-33f2870a2b83/go.mod h1:7vJpHMYJwNQCWgzmNV+VYUl1zCObLyodBc8nIyt8L5s=
+k8s.io/code-generator v0.0.0-20180228050103-7ead8f38b01c h1:tpq+nvY9+2K8qRsOIUzJY8Mq7sNrfisNwQLc4/Xw76o=
+k8s.io/code-generator v0.0.0-20180228050103-7ead8f38b01c/go.mod h1:MYiN+ZJZ9HkETbgVZdWw2AsuAi9PZ4V80cwfuf2axe8=
+k8s.io/gengo v0.0.0-20181113154421-fd15ee9cc2f7 h1:zjNgw2qqBQmKd0S59lGZBQqFxJqUZroVbDphfnVm5do=
+k8s.io/gengo v0.0.0-20181113154421-fd15ee9cc2f7/go.mod h1:ezvh/TsK7cY6rbqRK0oQQ8IAqLxYwwyPxAX1Pzy0ii0=
+k8s.io/klog v0.1.0 h1:I5HMfc/DtuVaGR1KPwUrTc476K8NCqNBldC7H4dYEzk=
+k8s.io/klog v0.1.0/go.mod h1:Gq+BEi5rUBO/HRz0bTSXDUcqjScdoY3a9IHpCEIOOfk=
 k8s.io/kube-openapi v0.0.0-20181031203759-72693cb1fadd h1:ggv/Vfza0i5xuhUZyYyxcc25AmQvHY8Zi1C2m8WgBvA=
 k8s.io/kube-openapi v0.0.0-20181031203759-72693cb1fadd/go.mod h1:BXM9ceUBTj2QnfH2MK1odQs778ajze1RxcmP6S8RVVc=
 k8s.io/kubernetes v1.10.2 h1:LRXf0P/+l+C2KKTpPSeOQNxF9/9Oi4HRLMsdBPoi2/Y=

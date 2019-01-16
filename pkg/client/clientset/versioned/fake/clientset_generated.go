@@ -20,8 +20,8 @@ package fake
 
 import (
 	clientset "github.com/anywhy/redis-operator/pkg/client/clientset/versioned"
-	redisv1alpha1 "github.com/anywhy/redis-operator/pkg/client/clientset/versioned/typed/redis/v1alpha1"
-	fakeredisv1alpha1 "github.com/anywhy/redis-operator/pkg/client/clientset/versioned/typed/redis/v1alpha1/fake"
+	anywhyv1alpha1 "github.com/anywhy/redis-operator/pkg/client/clientset/versioned/typed/redis/v1alpha1"
+	fakeanywhyv1alpha1 "github.com/anywhy/redis-operator/pkg/client/clientset/versioned/typed/redis/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -70,12 +70,12 @@ func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 
 var _ clientset.Interface = &Clientset{}
 
-// RedisV1alpha1 retrieves the RedisV1alpha1Client
-func (c *Clientset) RedisV1alpha1() redisv1alpha1.RedisV1alpha1Interface {
-	return &fakeredisv1alpha1.FakeRedisV1alpha1{Fake: &c.Fake}
+// AnywhyV1alpha1 retrieves the AnywhyV1alpha1Client
+func (c *Clientset) AnywhyV1alpha1() anywhyv1alpha1.AnywhyV1alpha1Interface {
+	return &fakeanywhyv1alpha1.FakeAnywhyV1alpha1{Fake: &c.Fake}
 }
 
-// Redis retrieves the RedisV1alpha1Client
-func (c *Clientset) Redis() redisv1alpha1.RedisV1alpha1Interface {
-	return &fakeredisv1alpha1.FakeRedisV1alpha1{Fake: &c.Fake}
+// Anywhy retrieves the AnywhyV1alpha1Client
+func (c *Clientset) Anywhy() anywhyv1alpha1.AnywhyV1alpha1Interface {
+	return &fakeanywhyv1alpha1.FakeAnywhyV1alpha1{Fake: &c.Fake}
 }

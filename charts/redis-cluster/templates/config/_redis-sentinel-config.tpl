@@ -79,7 +79,7 @@ dir /tmp
 #
 # Note: master name should not include special characters or spaces.
 # The valid charset is A-z 0-9 and the three characters ".-_".
-sentinel monitor {{ .Values.sentinel.masterName | defalut .Values.clusterName }} {{ .Values.clusterName }}-master-peer.{{ .Release.Namespace }}.svc 6379 2
+sentinel monitor {{ .Values.sentinel.masterName | default (printf (.Values.clusterName)) }} {{ .Values.clusterName }}-master-peer.{{ .Release.Namespace }}.svc 6379 2
 
 # sentinel auth-pass <master-name> <password>
 #
@@ -96,7 +96,7 @@ sentinel monitor {{ .Values.sentinel.masterName | defalut .Values.clusterName }}
 # the AUTH command will have no effect in Redis instances with authentication
 # switched off.
 {{ if .Values.sentinel.masterAuth }}
-sentinel auth-pass {{ .Values.sentinel.masterName | defalut .Values.clusterName }} {{ .Values.sentinel.masterAuth }}
+sentinel auth-pass {{ .Values.sentinel.masterName | default (printf (.Values.clusterName)) }} {{ .Values.sentinel.masterAuth }}
 {{ end }}
 
 # sentinel down-after-milliseconds <master-name> <milliseconds>

@@ -54,7 +54,7 @@ type redises struct {
 }
 
 // newRedises returns a Redises
-func newRedises(c *RedisV1alpha1Client, namespace string) *redises {
+func newRedises(c *AnywhyV1alpha1Client, namespace string) *redises {
 	return &redises{
 		client: c.RESTClient(),
 		ns:     namespace,

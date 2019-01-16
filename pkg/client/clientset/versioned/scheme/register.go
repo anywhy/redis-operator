@@ -19,7 +19,7 @@ limitations under the License.
 package scheme
 
 import (
-	redisv1alpha1 "github.com/anywhy/redis-operator/pkg/apis/redis/v1alpha1"
+	anywhyv1alpha1 "github.com/anywhy/redis-operator/pkg/apis/redis/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -50,5 +50,5 @@ func init() {
 // After this, RawExtensions in Kubernetes types will serialize kube-aggregator types
 // correctly.
 func AddToScheme(scheme *runtime.Scheme) {
-	redisv1alpha1.AddToScheme(scheme)
+	anywhyv1alpha1.AddToScheme(scheme)
 }

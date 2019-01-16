@@ -48,7 +48,7 @@ func (rrc *realRedisControl) UpdateRedis(rc *v1alpha1.Redis,
 	// don't wait due to limited number of clients, but backoff after the default number of steps
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		var updateErr error
-		updateRC, updateErr = rrc.cli.Redis().Redises(ns).Update(rc)
+		updateRC, updateErr = rrc.cli.Anywhy().Redises(ns).Update(rc)
 		if updateErr == nil {
 			glog.Infof("Redis: [%s/%s] updated successfully", ns, rcName)
 			return nil

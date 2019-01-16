@@ -13,13 +13,14 @@ data:
     {{- if .Values.redis.config }}
 {{ .Values.redis.config | indent 4 }}
     {{- else }}
-{{ tuple "config/_redis-config.tpl" }}
+{{ tuple "config/_redis-config.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
     {{- end -}}
-{{- if and (.Values.redis.mode) (eq .Values.redis.mode "replica") (gt .Values.redis.members 2) }}
+
+{{- if ((.Values.redis.mode) and (eq .Values.redis.mode "replica") and (gt .Values.redis.members 2)) }}
   sentinel-config-file: |-
     {{- if .Values.sentinel.config }}
 {{ .Values.sentinel.config | indent 4 }}
     {{- else }}
-{{ tuple "config/_redis-sentinel-config.tpl" }}
+{{ tuple "config/_redis-sentinel-config.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
     {{- end -}}
-{{- end }}
+{{- end -}}

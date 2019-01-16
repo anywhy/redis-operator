@@ -69,7 +69,7 @@ func NewController(
 		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
 	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "redises"})
 
-	rcInformer := informerFactory.Redis().V1alpha1().Redises()
+	rcInformer := informerFactory.Anywhy().V1alpha1().Redises()
 	setInformer := kubeInformerFactory.Apps().V1beta1().StatefulSets()
 	svcInformer := kubeInformerFactory.Core().V1().Services()
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()

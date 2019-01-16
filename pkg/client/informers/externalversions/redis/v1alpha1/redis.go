@@ -61,13 +61,13 @@ func NewFilteredRedisInformer(client versioned.Interface, namespace string, resy
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.RedisV1alpha1().Redises(namespace).List(options)
+				return client.AnywhyV1alpha1().Redises(namespace).List(options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.RedisV1alpha1().Redises(namespace).Watch(options)
+				return client.AnywhyV1alpha1().Redises(namespace).Watch(options)
 			},
 		},
 		&redis_v1alpha1.Redis{},

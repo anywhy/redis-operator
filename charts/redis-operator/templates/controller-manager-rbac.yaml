@@ -40,7 +40,7 @@ rules:
   resources: ["statefulsets"]
   verbs: ["*"]
 - apiGroups: ["anywhy.github"]
-  resources: ["Rediss"]
+  resources: ["redises"]
   verbs: ["*"]
 {{- end }}
 - apiGroups: [""]
@@ -99,7 +99,7 @@ rules:
   resources: ["statefulsets"]
   verbs: ["*"]
 - apiGroups: ["anywhy.github"]
-  resources: ["Rediss"]
+  resources: ["redises"]
   verbs: ["*"]
 ---
 kind: RoleBinding

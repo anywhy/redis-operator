@@ -7,15 +7,18 @@
 rbac:
   create: true
 
-# clusterName is the redis cluster name, it is required and should be unique
+# clusterName is the TiDB cluster name, it is required and should be unique
 # if multiple clusters are deployed in the same namespace.
 clusterName: demo
 
 # schedulerName must be same with charts/redis-operator/values#scheduler.schedulerName
-# schedulerName: redis-scheduler
+# schedulerName: default-scheduler
 
 # default reclaim policy of a PV
 pvReclaimPolicy: Retain
+
+# if nodeSelectorRequired is true, all the following labels must be matched
+# nodeSelectorRequired: true
 
 # services is the service list to expose, default is ClusterIP
 # can be ClusterIP | NodePort | LoadBalancer
@@ -37,7 +40,7 @@ redis:
   # Image pull policy.
   imagePullPolicy: IfNotPresent
 
-  # shard cluster replication
+  # redis cluster replication
   # replicationFactor: 0
 
   resources:
@@ -61,7 +64,7 @@ redis:
   tolerations: {}
   # - key: node-role
   #   operator: Equal
-  #   value: tidb
+  #   value: redis
   #   effect: "NoSchedule"
 
 # Replica cluster sentinel
@@ -93,7 +96,3 @@ sentinel:
   #   operator: Equal
   #   value: tidb
   #   effect: "NoSchedule"
-
-
-    
-

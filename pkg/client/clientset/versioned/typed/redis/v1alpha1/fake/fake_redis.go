@@ -30,13 +30,13 @@ import (
 
 // FakeRedises implements RedisInterface
 type FakeRedises struct {
-	Fake *FakeRedisV1alpha1
+	Fake *FakeAnywhyV1alpha1
 	ns   string
 }
 
-var redisesResource = schema.GroupVersionResource{Group: "redis.anywhy.github", Version: "v1alpha1", Resource: "redises"}
+var redisesResource = schema.GroupVersionResource{Group: "anywhy.github", Version: "v1alpha1", Resource: "redises"}
 
-var redisesKind = schema.GroupVersionKind{Group: "redis.anywhy.github", Version: "v1alpha1", Kind: "Redis"}
+var redisesKind = schema.GroupVersionKind{Group: "anywhy.github", Version: "v1alpha1", Kind: "Redis"}
 
 // Get takes name of the redis, and returns the corresponding redis object, and an error if there is any.
 func (c *FakeRedises) Get(name string, options v1.GetOptions) (result *v1alpha1.Redis, err error) {
