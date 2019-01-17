@@ -27,7 +27,7 @@ func NewReplicaUpgrader(podControl controller.PodControlInterface,
 func (ru *replicaUpgrader) Upgrade(rc *v1alpha1.Redis, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	ns, rcName := rc.GetNamespace(), rc.GetName()
 
-	if rc.Status.Replica.Phase == v1alpha1.UpgradePhase {
+	if rc.Status.Phase == v1alpha1.UpgradePhase {
 		_, podSpec, err := GetLastAppliedConfig(oldSet)
 		if err != nil {
 			return err
@@ -36,7 +36,7 @@ func (ru *replicaUpgrader) Upgrade(rc *v1alpha1.Redis, oldSet *apps.StatefulSet,
 		return nil
 	}
 
-	rc.Status.Replica.Phase = v1alpha1.UpgradePhase
+	rc.Status.Phase = v1alpha1.UpgradePhase
 	if !templateEqual(newSet.Spec.Template, oldSet.Spec.Template) {
 		return nil
 	}

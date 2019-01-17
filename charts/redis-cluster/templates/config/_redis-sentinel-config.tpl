@@ -79,7 +79,7 @@ dir /tmp
 #
 # Note: master name should not include special characters or spaces.
 # The valid charset is A-z 0-9 and the three characters ".-_".
-sentinel monitor {{ .Values.sentinel.masterName | default (printf (.Values.clusterName)) }} {{ .Values.clusterName }}-master-peer.{{ .Release.Namespace }}.svc 6379 2
+sentinel monitor {{ .Values.sentinel.masterName | default (printf (.Values.clusterName)) }} {{ .Values.clusterName }}-redis-master-peer.{{ .Release.Namespace }}.svc 6379 2
 
 # sentinel auth-pass <master-name> <password>
 #
@@ -107,7 +107,7 @@ sentinel auth-pass {{ .Values.sentinel.masterName | default (printf (.Values.clu
 # Down).
 #
 # Default is 30 seconds.
-sentinel down-after-milliseconds mymaster 30000
+sentinel down-after-milliseconds {{ .Values.sentinel.masterName | default (printf (.Values.clusterName)) }} 30000
 
 # sentinel parallel-syncs <master-name> <numreplicas>
 #
@@ -140,7 +140,7 @@ sentinel parallel-syncs mymaster 1
 #   the exact parallel-syncs progression as specified.
 #
 # Default is 3 minutes.
-sentinel failover-timeout mymaster 180000
+sentinel failover-timeout {{ .Values.sentinel.masterName | default (printf (.Values.clusterName)) }} 180000
 
 # SCRIPTS EXECUTION
 #

@@ -121,7 +121,7 @@ func (smm *sentinelMemberManager) syncSentinelService(rc *v1alpha1.Redis, svcCon
 			if err != nil {
 				return err
 			}
-			return smm.svcControl.CreateService(rc, oldSvc)
+			return smm.svcControl.CreateService(rc, newSvc)
 		}
 		return err
 	}

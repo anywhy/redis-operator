@@ -26,6 +26,9 @@ func NewReplicaFailover(haControl controller.HAControlInterface,
 }
 
 func (rf *replicaFailover) Failover(rc *v1alpha1.Redis) {
+	if rc.Status.Phase == v1alpha1.UpgradePhase {
+		return
+	}
 	rf.haControl.Watch(rc, func(master string) error {
 		instanceName := rc.GetLabels()[label.InstanceLabelKey]
 		selector, err := label.New().Instance(instanceName).Replica().Selector()

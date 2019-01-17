@@ -33,9 +33,6 @@ require (
 	k8s.io/apimachinery v0.0.0-20180228050457-302974c03f7e
 	k8s.io/apiserver v0.0.0-20181103082535-b4fba3b8a3fc
 	k8s.io/client-go v0.0.0-20180424211516-33f2870a2b83
-	k8s.io/code-generator v0.0.0-20180228050103-7ead8f38b01c // indirect
-	k8s.io/gengo v0.0.0-20181113154421-fd15ee9cc2f7 // indirect
-	k8s.io/klog v0.1.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20181031203759-72693cb1fadd // indirect
 	k8s.io/kubernetes v1.10.2
 )

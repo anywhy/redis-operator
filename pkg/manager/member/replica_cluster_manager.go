@@ -171,7 +171,7 @@ func (rmm *replicaMemeberManager) syncReplicaStatefulSetForRedis(rc *v1alpha1.Re
 	}
 
 	// TODO update
-	if !templateEqual(newSet.Spec.Template, oldSet.Spec.Template) || rc.Status.Replica.Phase == v1alpha1.UpgradePhase {
+	if !templateEqual(newSet.Spec.Template, oldSet.Spec.Template) || rc.Status.Phase == v1alpha1.UpgradePhase {
 		if err := rmm.replicaUpgrader.Upgrade(rc, oldSet, newSet); err != nil {
 			return err
 		}
@@ -186,6 +186,20 @@ func (rmm *replicaMemeberManager) syncReplicaStatefulSetForRedis(rc *v1alpha1.Re
 	if *newSet.Spec.Replicas < *oldSet.Spec.Replicas {
 		if err := rmm.redisScaler.ScaleIn(rc, newSet, oldSet); err != nil {
 			return err
+		}
+	}
+
+	if rmm.autoFailover {
+		if rc.Spec.Redis.Members > 1 {
+			if rc.Status.Phase == v1alpha1.UpgradePhase {
+				rc.Spec.Sentinel.Replicas = 0
+			}
+			if err := rmm.sentinelManager.Sync(rc); err != nil {
+				return err
+			}
+			if rc.SentinelIsOk() {
+				rmm.replicaFailover.Failover(rc)
+			}
 		}
 	}
 
@@ -307,9 +321,9 @@ func (rmm *replicaMemeberManager) syncReplicaStatefulSetStatus(rc *v1alpha1.Redi
 		return err
 	}
 	if upgrading {
-		rc.Status.Replica.Phase = v1alpha1.UpgradePhase
+		rc.Status.Phase = v1alpha1.UpgradePhase
 	} else {
-		rc.Status.Replica.Phase = v1alpha1.NormalPhase
+		rc.Status.Phase = v1alpha1.NormalPhase
 	}
 
 	return nil
