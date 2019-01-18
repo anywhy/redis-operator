@@ -36,8 +36,9 @@ spec:
     tolerations:
 {{ toYaml .Values.redis.tolerations | indent 4 }}
   {{- end }}
-{{- if ((eq .Values.redis.mode "replica") and (gt .Values.redis.members 2)) }}
+{{- if ((eq .Values.redis.mode "replica") and (gt .Values.redis.members 2)) and (eq .Values.sentinel.enable true) }}
   sentinel:
+    enable: {{ .Values.sentinel.enable | default false }}
     schedulerName: {{ .Values.schedulerName | default "default-scheduler" }}
     masterName: {{ .Values.sentinel.masterName | default (printf (.Values.clusterName)) }}
     replicas: {{ .Values.sentinel.replicas | default 3 }}

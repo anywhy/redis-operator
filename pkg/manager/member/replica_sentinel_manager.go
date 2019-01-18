@@ -4,6 +4,7 @@ import (
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	appslisters "k8s.io/client-go/listers/apps/v1beta1"
@@ -14,6 +15,7 @@ import (
 	"github.com/anywhy/redis-operator/pkg/label"
 	"github.com/anywhy/redis-operator/pkg/manager"
 	"github.com/anywhy/redis-operator/pkg/util"
+	"github.com/golang/glog"
 )
 
 type sentinelMemberManager struct {
@@ -60,26 +62,51 @@ func (smm *sentinelMemberManager) syncSentinelStatefulSetForRedis(rc *v1alpha1.R
 		return err
 	}
 	oldSentiSet, err := smm.setLister.StatefulSets(ns).Get(controller.SentinelMemberName(rcName))
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			err := setStatefulSetLastAppliedConfigAnnotation(newSentiSet)
-			if err != nil {
-				return err
-			}
-
-			err = smm.setControl.CreateStatefulSet(rc, newSentiSet)
-			if err != nil {
-				return err
-			}
-			rc.Status.Sentinel.StatefulSet = &apps.StatefulSetStatus{}
+	if apierrors.IsNotFound(err) {
+		err := setStatefulSetLastAppliedConfigAnnotation(newSentiSet)
+		if err != nil {
+			return err
 		}
+
+		err = smm.setControl.CreateStatefulSet(rc, newSentiSet)
+		if err != nil {
+			return err
+		}
+		rc.Status.Sentinel.StatefulSet = &apps.StatefulSetStatus{}
+		return controller.RequeueErrorf("Redis: [%s/%s], waiting for replica sentinel running", ns, rcName)
+	}
+
+	if err = smm.syncRedisStatus(rc, oldSentiSet); err != nil {
+		glog.Errorf("failed to sync Redis: [%s/%s]'s status, error: %v", ns, rcName, err)
+	}
+
+	// stop sentinel
+	if rc.ReplicaUpgrading() {
+		replicas := int32(0)
+		set := *oldSentiSet
+		set.Spec.Replicas = &replicas
+		if err := setStatefulSetLastAppliedConfigAnnotation(&set); err != nil {
+			return err
+		}
+
+		_, err = smm.setControl.UpdateStatefulSet(rc, &set)
 		return err
 	}
 
-	err = smm.syncRedisStatus(rc, oldSentiSet)
-	if err != nil {
+	// update
+	if !statefulSetEqual(*newSentiSet, *oldSentiSet) {
+		set := *oldSentiSet
+		set.Spec.Template = newSentiSet.Spec.Template
+		*set.Spec.Replicas = *newSentiSet.Spec.Replicas
+		set.Spec.UpdateStrategy = newSentiSet.Spec.UpdateStrategy
+		if err := setStatefulSetLastAppliedConfigAnnotation(&set); err != nil {
+			return err
+		}
+
+		_, err = smm.setControl.UpdateStatefulSet(rc, &set)
 		return err
 	}
+
 	return nil
 }
 
@@ -226,23 +253,31 @@ redis-server /etc/redis/sentinel.conf --sentinel
 
 func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.Redis) (*apps.StatefulSet, error) {
 	ns, rcName := rc.GetNamespace(), rc.GetName()
-	sentiConfigMap := controller.RedisMemberName(rcName)
+	redisConfigMap := controller.RedisMemberName(rcName)
 
 	podMount, podVolume := podinfoVolume()
 	volMounts := []corev1.VolumeMount{
 		podMount,
-		{Name: "configfile", MountPath: "/etc/redis"},
+		{Name: v1alpha1.SentinelMemberType.String(), MountPath: "/data"},
+		{Name: "configmap", MountPath: "/configmap"},
+		{Name: "sentinelconf", MountPath: "/etc/redis"},
 	}
 	vols := []corev1.Volume{
 		podVolume,
-		{Name: "configfile",
+		{Name: "configmap",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: sentiConfigMap,
+						Name: redisConfigMap,
 					},
 					Items: []corev1.KeyToPath{{Key: "sentinel-config-file", Path: "sentinel.conf"}},
 				},
+			},
+		},
+		{
+			Name: "sentinelconf",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
 	}
@@ -250,6 +285,15 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.Redis) 
 	instanceName := rc.GetLabels()[label.InstanceLabelKey]
 	sentiLabel := label.New().Instance(instanceName).Sentinel()
 	setName := controller.SentinelMemberName(rcName)
+	storageClassName := rc.Spec.Redis.StorageClassName
+	if storageClassName == "" {
+		storageClassName = controller.DefaultStorageClassName
+	}
+
+	pvc, err := smm.volumeClaimTemplate(rc, &storageClassName)
+	if err != nil {
+		return nil, err
+	}
 
 	sentiSet := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -272,6 +316,16 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.Redis) 
 					Affinity: util.AffinityForNodeSelector(ns,
 						true, sentiLabel.Labels(),
 						rc.Spec.Redis.NodeSelector),
+					InitContainers: []corev1.Container{
+						{
+							Name:  "copy-config",
+							Image: "busybox",
+							Command: []string{
+								"sh", "-c", "cp /configmap/* /etc/redis",
+							},
+							VolumeMounts: volMounts,
+						},
+					},
 					Containers: []corev1.Container{
 						{
 							Name:            "redis-sentinel",
@@ -307,7 +361,35 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.Redis) 
 			},
 			ServiceName:         controller.SentinelPeerMemberName(rcName),
 			PodManagementPolicy: apps.ParallelPodManagement,
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+				pvc,
+			},
 		},
 	}
 	return sentiSet, nil
+}
+
+func (smm *sentinelMemberManager) volumeClaimTemplate(rc *v1alpha1.Redis, storageClassName *string) (corev1.PersistentVolumeClaim, error) {
+	var pvc corev1.PersistentVolumeClaim
+
+	size, _ := resource.ParseQuantity("10Mi")
+	pvc = corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{Name: v1alpha1.SentinelMemberType.String()},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{
+				corev1.ReadWriteOnce,
+			},
+			StorageClassName: storageClassName,
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceStorage: size,
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceStorage: size,
+				},
+			},
+		},
+	}
+
+	return pvc, nil
 }

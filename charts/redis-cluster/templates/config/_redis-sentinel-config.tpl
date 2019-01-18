@@ -60,7 +60,7 @@ logfile ""
 # For Redis Sentinel to chdir to /tmp at startup is the simplest thing
 # for the process to don't interfere with administrative tasks such as
 # unmounting filesystems.
-dir /tmp
+dir /data
 
 # sentinel monitor <master-name> <ip> <redis-port> <quorum>
 #
@@ -115,7 +115,7 @@ sentinel down-after-milliseconds {{ .Values.sentinel.masterName | default (print
 # during the failover. Use a low number if you use the replicas to serve query
 # to avoid that all the replicas will be unreachable at about the same
 # time while performing the synchronization with the master.
-sentinel parallel-syncs mymaster 1
+sentinel parallel-syncs {{ .Values.sentinel.masterName | default (printf (.Values.clusterName)) }} 1
 
 # sentinel failover-timeout <master-name> <milliseconds>
 #

@@ -27,12 +27,16 @@ require (
 	golang.org/x/net v0.0.0-20181029044818-c44066c5c816 // indirect
 	golang.org/x/sys v0.0.0-20181030150119-7e31e0c00fa0 // indirect
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2 // indirect
+	golang.org/x/tools v0.0.0-20190117194123-b4b6fe2cb829 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/api v0.0.0-20180308224125-73d903622b73
 	k8s.io/apiextensions-apiserver v0.0.0-20181110192823-2c43ee60e25b // indirect
 	k8s.io/apimachinery v0.0.0-20180228050457-302974c03f7e
 	k8s.io/apiserver v0.0.0-20181103082535-b4fba3b8a3fc
 	k8s.io/client-go v0.0.0-20180424211516-33f2870a2b83
+	k8s.io/code-generator v0.0.0-20180228050103-7ead8f38b01c // indirect
+	k8s.io/gengo v0.0.0-20190116091435-f8a0810f38af // indirect
+	k8s.io/klog v0.1.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20181031203759-72693cb1fadd // indirect
 	k8s.io/kubernetes v1.10.2
 )

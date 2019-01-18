@@ -23,7 +23,7 @@ func NewReplicaScaler(
 
 // ScaleOut scales out the cluster
 func (rs *replicaScaler) ScaleOut(rc *v1alpha1.Redis, newSet *apps.StatefulSet, oldSet *apps.StatefulSet) error {
-	if rc.RedisUpgrading() {
+	if rc.ReplicaUpgrading() {
 		resetReplicas(newSet, oldSet)
 		return nil
 	}
@@ -34,7 +34,7 @@ func (rs *replicaScaler) ScaleOut(rc *v1alpha1.Redis, newSet *apps.StatefulSet, 
 
 // ScaleIn scales in the cluster
 func (rs *replicaScaler) ScaleIn(rc *v1alpha1.Redis, newSet *apps.StatefulSet, oldSet *apps.StatefulSet) error {
-	if rc.RedisUpgrading() {
+	if rc.ReplicaUpgrading() {
 		resetReplicas(newSet, oldSet)
 		return nil
 	}

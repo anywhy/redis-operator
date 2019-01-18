@@ -17,6 +17,7 @@ import (
 	"github.com/anywhy/redis-operator/pkg/label"
 	"github.com/anywhy/redis-operator/pkg/manager"
 	"github.com/anywhy/redis-operator/pkg/util"
+	"github.com/golang/glog"
 )
 
 type replicaMemeberManager struct {
@@ -142,22 +143,22 @@ func (rmm *replicaMemeberManager) syncReplicaStatefulSetForRedis(rc *v1alpha1.Re
 	}
 
 	oldSet, err := rmm.setLister.StatefulSets(ns).Get(controller.RedisMemberName(rcName))
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			err = setStatefulSetLastAppliedConfigAnnotation(newSet)
-			if err != nil {
-				return err
-			}
-
-			if err := rmm.setControl.CreateStatefulSet(rc, newSet); err != nil {
-				return err
-			}
-			rc.Status.Replica.StatefulSet = &apps.StatefulSetStatus{}
-
-			return nil
+	if apierrors.IsNotFound(err) {
+		err = setStatefulSetLastAppliedConfigAnnotation(newSet)
+		if err != nil {
+			return err
 		}
 
-		return err
+		if err := rmm.setControl.CreateStatefulSet(rc, newSet); err != nil {
+			return err
+		}
+		rc.Status.Replica.StatefulSet = &apps.StatefulSetStatus{}
+		return controller.RequeueErrorf("Redis: [%s/%s], waiting for replica instances running", ns, rcName)
+	}
+
+	// sync status
+	if err := rmm.syncReplicaStatefulSetStatus(rc, oldSet); err != nil {
+		glog.Errorf("failed to sync Redis: [%s/%s]'s status, error: %v", ns, rcName, err)
 	}
 
 	// init cluster master
@@ -165,13 +166,8 @@ func (rmm *replicaMemeberManager) syncReplicaStatefulSetForRedis(rc *v1alpha1.Re
 		return err
 	}
 
-	// sync status
-	if err := rmm.syncReplicaStatefulSetStatus(rc, oldSet); err != nil {
-		return err
-	}
-
 	// TODO update
-	if !templateEqual(newSet.Spec.Template, oldSet.Spec.Template) || rc.Status.Phase == v1alpha1.UpgradePhase {
+	if !templateEqual(newSet.Spec.Template, oldSet.Spec.Template) || rc.Status.Replica.Phase == v1alpha1.UpgradePhase {
 		if err := rmm.replicaUpgrader.Upgrade(rc, oldSet, newSet); err != nil {
 			return err
 		}
@@ -189,14 +185,12 @@ func (rmm *replicaMemeberManager) syncReplicaStatefulSetForRedis(rc *v1alpha1.Re
 		}
 	}
 
-	if rmm.autoFailover {
-		if rc.Spec.Redis.Members > 1 {
-			if rc.Status.Phase == v1alpha1.UpgradePhase {
-				rc.Spec.Sentinel.Replicas = 0
-			}
-			if err := rmm.sentinelManager.Sync(rc); err != nil {
-				return err
-			}
+	// enable sentinel
+	if rc.SentinelEnable() && rc.Spec.Redis.Members > 1 {
+		if err := rmm.sentinelManager.Sync(rc); err != nil {
+			return err
+		}
+		if rmm.autoFailover {
 			if rc.SentinelIsOk() {
 				rmm.replicaFailover.Failover(rc)
 			}
@@ -321,9 +315,9 @@ func (rmm *replicaMemeberManager) syncReplicaStatefulSetStatus(rc *v1alpha1.Redi
 		return err
 	}
 	if upgrading {
-		rc.Status.Phase = v1alpha1.UpgradePhase
+		rc.Status.Replica.Phase = v1alpha1.UpgradePhase
 	} else {
-		rc.Status.Phase = v1alpha1.NormalPhase
+		rc.Status.Replica.Phase = v1alpha1.NormalPhase
 	}
 
 	return nil
@@ -398,6 +392,7 @@ func (rmm *replicaMemeberManager) getNewReplicaStatefulSet(rc *v1alpha1.Redis) (
 	podMount, podVolume := podinfoVolume()
 	volMounts := []corev1.VolumeMount{
 		podMount,
+		{Name: v1alpha1.RedisMemberType.String(), MountPath: "/data"},
 		{Name: "configfile", MountPath: "/etc/redis"},
 	}
 	vols := []corev1.Volume{

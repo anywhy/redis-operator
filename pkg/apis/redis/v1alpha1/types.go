@@ -93,6 +93,7 @@ type RedisInstanceSpec struct {
 
 // RedisSentinelSpec redis sentinel attributes
 type RedisSentinelSpec struct {
+	Enable     bool   `json:"enable,omitempty"`
 	Replicas   int32  `json:"replicas,omitempty"`
 	MasterName string `json:"masterName,omitempty"`
 	Password   string `json:"password,omitempty"`
@@ -108,7 +109,6 @@ type RedisSentinelSpec struct {
 
 // RedisStatus represents the current status of a redis cluster.
 type RedisStatus struct {
-	Phase    MemberPhase          `json:"phase,omitempty"`
 	Replica  ReplicaClusterStatus `json:"replica,omitempty"`
 	Sentinel SentinelStatus       `json:"sentinel,omitempty"`
 }
@@ -145,6 +145,7 @@ type SentinelStatus struct {
 
 // ReplicaClusterStatus is ms cluster status
 type ReplicaClusterStatus struct {
+	Phase       MemberPhase             `json:"phase,omitempty"`
 	StatefulSet *apps.StatefulSetStatus `json:"statefulset,omitempty"`
 	MasterName  string                  `json:"masterName,omitempty"`
 }
