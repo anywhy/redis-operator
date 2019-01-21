@@ -52,14 +52,16 @@ func (rf *replicaFailover) Failover(rc *v1alpha1.Redis) {
 					glog.Errorf("Replica cluster HA switch master error: %#v", err)
 					return err
 				}
+				glog.Infof("Replica cluster HA switch: %v to master", podCopy.Name)
 				rc.Status.Replica.MasterName = pod.GetName()
-			} else if !strings.EqualFold(master, addr) && pod.Labels[label.ComponentLabelKey] != label.MasterLabelKey {
+			} else if !strings.EqualFold(master, addr) && pod.Labels[label.ComponentLabelKey] == label.MasterLabelKey {
 				podCopy := pod.DeepCopy()
 				podCopy.Labels[label.ComponentLabelKey] = label.SlaveLabelKey
 				if _, err := rf.podControl.UpdatePod(rc, podCopy); err != nil {
 					glog.Errorf("Replica cluster HA switch master error: %#v", err)
 					return err
 				}
+				glog.Infof("Replica cluster HA switch: %v to slave", podCopy.Name)
 			}
 		}
 
