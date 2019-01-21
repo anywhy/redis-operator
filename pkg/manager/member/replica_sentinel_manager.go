@@ -260,7 +260,7 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.Redis) 
 		podMount,
 		{Name: v1alpha1.SentinelMemberType.String(), MountPath: "/data"},
 		{Name: "configmap", MountPath: "/configmap"},
-		{Name: "sentinelconf", MountPath: "/etc/redis"},
+		{Name: "sentinelconfig", MountPath: "/etc/redis"},
 	}
 	vols := []corev1.Volume{
 		podVolume,
@@ -275,7 +275,7 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.Redis) 
 			},
 		},
 		{
-			Name: "sentinelconf",
+			Name: "sentinelconfig",
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
@@ -319,7 +319,7 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.Redis) 
 					InitContainers: []corev1.Container{
 						{
 							Name:  "copy-config",
-							Image: "busybox",
+							Image: "busybox:latest",
 							Command: []string{
 								"sh", "-c", "cp /configmap/* /etc/redis",
 							},

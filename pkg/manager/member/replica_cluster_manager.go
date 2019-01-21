@@ -393,11 +393,12 @@ func (rmm *replicaMemeberManager) getNewReplicaStatefulSet(rc *v1alpha1.Redis) (
 	volMounts := []corev1.VolumeMount{
 		podMount,
 		{Name: v1alpha1.RedisMemberType.String(), MountPath: "/data"},
-		{Name: "configfile", MountPath: "/etc/redis"},
+		{Name: "configmap", MountPath: "/configmap"},
+		{Name: "redisconfig", MountPath: "/etc/redis"},
 	}
 	vols := []corev1.Volume{
 		podVolume,
-		{Name: "configfile",
+		{Name: "configmap",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -405,6 +406,12 @@ func (rmm *replicaMemeberManager) getNewReplicaStatefulSet(rc *v1alpha1.Redis) (
 					},
 					Items: []corev1.KeyToPath{{Key: "config-file", Path: "redis.conf"}},
 				},
+			},
+		},
+		{
+			Name: "redisconfig",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
 	}
@@ -445,6 +452,16 @@ func (rmm *replicaMemeberManager) getNewReplicaStatefulSet(rc *v1alpha1.Redis) (
 						rc.Spec.Redis.NodeSelectorRequired,
 						rediLabel.Labels(),
 						rc.Spec.Redis.NodeSelector),
+					InitContainers: []corev1.Container{
+						{
+							Name:  "copy-config",
+							Image: "busybox:latest",
+							Command: []string{
+								"sh", "-c", "cp /configmap/* /etc/redis",
+							},
+							VolumeMounts: volMounts,
+						},
+					},
 					Containers: []corev1.Container{
 						{
 							Name:            "redis",
