@@ -14,7 +14,7 @@ import (
 
 const (
 	// LastAppliedConfigAnnotation is annotation key of last applied configuration
-	LastAppliedConfigAnnotation = "redis.anywhy.github/last-applied-configuration"
+	LastAppliedConfigAnnotation = "anywhy.github/last-applied-configuration"
 	// ImagePullBackOff is the pod state of image pull failed
 	ImagePullBackOff = "ImagePullBackOff"
 	// ErrImagePull is the pod state of image pull failed
