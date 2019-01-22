@@ -557,3 +557,26 @@ func (rmm *replicaMemeberManager) volumeClaimTemplate(rc *v1alpha1.Redis, storag
 
 	return pvc, nil
 }
+
+// FakeReplicaMemberManager rediscluster member manager fake use test
+type FakeReplicaMemberManager struct {
+	err error
+}
+
+// NewFakeReplicaMemberManager new fake instance
+func NewFakeReplicaMemberManager() *FakeReplicaMemberManager {
+	return &FakeReplicaMemberManager{}
+}
+
+// SetSyncError sync err
+func (frmm *FakeReplicaMemberManager) SetSyncError(err error) {
+	frmm.err = err
+}
+
+// Sync sync info
+func (frmm *FakeReplicaMemberManager) Sync(_ *v1alpha1.Redis) error {
+	if frmm.err != nil {
+		return frmm.err
+	}
+	return nil
+}

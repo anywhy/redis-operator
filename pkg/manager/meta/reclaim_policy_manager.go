@@ -59,3 +59,26 @@ func (rpm *reclaimPolicyManager) Sync(rc *v1alpha1.Redis) error {
 }
 
 var _ manager.Manager = &reclaimPolicyManager{}
+
+// FakeReclaimPolicyManager reclaim policy fake use test
+type FakeReclaimPolicyManager struct {
+	err error
+}
+
+// NewFakeReclaimPolicyManager new instace
+func NewFakeReclaimPolicyManager() *FakeReclaimPolicyManager {
+	return &FakeReclaimPolicyManager{}
+}
+
+// SetSyncError sync err
+func (frpm *FakeReclaimPolicyManager) SetSyncError(err error) {
+	frpm.err = err
+}
+
+// Sync sync info
+func (frpm *FakeReclaimPolicyManager) Sync(_ *v1alpha1.Redis) error {
+	if frpm.err != nil {
+		return frpm.err
+	}
+	return nil
+}

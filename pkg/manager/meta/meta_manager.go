@@ -128,3 +128,26 @@ func (mm *metaManager) resolvePVCFromPod(pod *corev1.Pod) (*corev1.PersistentVol
 }
 
 var _ manager.Manager = &metaManager{}
+
+// FakeMetaManager meata manage fake use test
+type FakeMetaManager struct {
+	err error
+}
+
+// NewFakeMetaManager new instance
+func NewFakeMetaManager() *FakeMetaManager {
+	return &FakeMetaManager{}
+}
+
+// SetSyncError sync err
+func (fmm *FakeMetaManager) SetSyncError(err error) {
+	fmm.err = err
+}
+
+// Sync sync info
+func (fmm *FakeMetaManager) Sync(_ *v1alpha1.Redis) error {
+	if fmm.err != nil {
+		return fmm.err
+	}
+	return nil
+}

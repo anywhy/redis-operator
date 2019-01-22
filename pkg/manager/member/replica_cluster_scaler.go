@@ -42,3 +42,20 @@ func (rs *replicaScaler) ScaleIn(rc *v1alpha1.Redis, newSet *apps.StatefulSet, o
 	decreaseReplicas(newSet, oldSet)
 	return nil
 }
+
+type fakeReplicaScaler struct{}
+
+// NewFakeReplicaScaler returns a fake Scaler
+func NewFakeReplicaScaler() Scaler {
+	return &fakeReplicaScaler{}
+}
+
+func (frs *fakeReplicaScaler) ScaleOut(_ *v1alpha1.Redis, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	increaseReplicas(newSet, oldSet)
+	return nil
+}
+
+func (frs *fakeReplicaScaler) ScaleIn(_ *v1alpha1.Redis, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+	decreaseReplicas(newSet, oldSet)
+	return nil
+}

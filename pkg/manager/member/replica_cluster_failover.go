@@ -72,3 +72,18 @@ func (rf *replicaFailover) Failover(rc *v1alpha1.Redis) {
 func (rf *replicaFailover) Recover(*v1alpha1.Redis) {
 	// Do nothing now
 }
+
+type fakeReplicaFailover struct{}
+
+// NewFakeReplicaFailover returns a fake Failover
+func NewFakeReplicaFailover() Failover {
+	return &fakeReplicaFailover{}
+}
+
+func (frf *fakeReplicaFailover) Failover(_ *v1alpha1.Redis) {
+	return
+}
+
+func (frf *fakeReplicaFailover) Recover(_ *v1alpha1.Redis) {
+	return
+}

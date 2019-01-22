@@ -8,11 +8,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 
 	"github.com/anywhy/redis-operator/pkg/apis/redis/v1alpha1"
 	"github.com/anywhy/redis-operator/pkg/client/clientset/versioned"
+	rcinformers "github.com/anywhy/redis-operator/pkg/client/informers/externalversions/redis/v1alpha1"
 	listers "github.com/anywhy/redis-operator/pkg/client/listers/redis/v1alpha1"
 )
 
@@ -84,4 +86,37 @@ func (rrc *realRedisControl) recordRedisEvent(verb string, rc *v1alpha1.Redis, e
 			strings.ToLower(verb), rcName, err)
 		rrc.recorder.Event(rc, corev1.EventTypeWarning, reason, msg)
 	}
+}
+
+// FakeRedisControl is a fake RedisControlInterface
+type FakeRedisControl struct {
+	RcLister           listers.RedisLister
+	RcIndexer          cache.Indexer
+	updateRedisTracker requestTracker
+}
+
+// NewFakeFakeRedisControl returns a FakeRedisControl
+func NewFakeFakeRedisControl(rcInformer rcinformers.RedisInformer) *FakeRedisControl {
+	return &FakeRedisControl{
+		rcInformer.Lister(),
+		rcInformer.Informer().GetIndexer(),
+		requestTracker{0, nil, 0},
+	}
+}
+
+// SetUpdateRedisError sets the error attributes of updateRedisTracker
+func (frc *FakeRedisControl) SetUpdateRedisError(err error, after int) {
+	frc.updateRedisTracker.err = err
+	frc.updateRedisTracker.after = after
+}
+
+// UpdateRedis updates the redis cluster
+func (frc *FakeRedisControl) UpdateRedis(rc *v1alpha1.Redis, _ *v1alpha1.RedisStatus, _ *v1alpha1.RedisStatus) (*v1alpha1.Redis, error) {
+	defer frc.updateRedisTracker.inc()
+	if frc.updateRedisTracker.errorReady() {
+		defer frc.updateRedisTracker.reset()
+		return rc, frc.updateRedisTracker.err
+	}
+
+	return rc, frc.RcIndexer.Update(rc)
 }

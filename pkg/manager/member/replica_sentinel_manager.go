@@ -393,3 +393,26 @@ func (smm *sentinelMemberManager) volumeClaimTemplate(rc *v1alpha1.Redis, storag
 
 	return pvc, nil
 }
+
+// FakeSentinelMemberManager replica cluster member manager fake use test
+type FakeSentinelMemberManager struct {
+	err error
+}
+
+// NewFakeSentinelMemberManager new fake instance
+func NewFakeSentinelMemberManager() *FakeSentinelMemberManager {
+	return &FakeSentinelMemberManager{}
+}
+
+// SetSyncError sync err
+func (fsmm *FakeSentinelMemberManager) SetSyncError(err error) {
+	fsmm.err = err
+}
+
+// Sync sync info
+func (fsmm *FakeSentinelMemberManager) Sync(_ *v1alpha1.Redis) error {
+	if fsmm.err != nil {
+		return fsmm.err
+	}
+	return nil
+}

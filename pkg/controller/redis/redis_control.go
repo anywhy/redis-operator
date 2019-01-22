@@ -67,9 +67,17 @@ func (rcc *defaultRedisControl) UpdateRedis(rc *v1alpha1.Redis) error {
 }
 
 func (rcc *defaultRedisControl) updateRedis(rc *v1alpha1.Redis) error {
+	// syncing all PVs managed by operator's reclaim policy to Retain
+	if err := rcc.reclaimPolicyManager.Sync(rc); err != nil {
+		return err
+	}
+
+	// sync replica cluster, member/service/label
 	if rc.Spec.Mode == v1alpha1.ReplicaCluster {
 		return rcc.updateReplicaCluster(rc)
 	}
+
+	// sync redis cluster, member/service/label
 	return rcc.updateRedisCluster(rc)
 }
 

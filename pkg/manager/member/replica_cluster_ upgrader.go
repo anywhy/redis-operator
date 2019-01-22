@@ -108,3 +108,15 @@ func (ru *replicaUpgrader) shoudUpgradePod(rc *v1alpha1.Redis, pod *corev1.Pod) 
 
 	return true, nil
 }
+
+type fakeReplicaUpgrader struct{}
+
+// NewFakeReplicaUpgraderr returns a fakeReplicaUpgrader
+func NewFakeReplicaUpgraderr() Upgrader {
+	return &fakeReplicaUpgrader{}
+}
+
+func (fru *fakeReplicaUpgrader) Upgrade(rc *v1alpha1.Redis, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
+	rc.Status.Replica.Phase = v1alpha1.UpgradePhase
+	return nil
+}
