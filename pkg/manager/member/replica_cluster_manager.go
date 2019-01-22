@@ -3,6 +3,7 @@ package member
 import (
 	"fmt"
 
+	"github.com/golang/glog"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -17,7 +18,6 @@ import (
 	"github.com/anywhy/redis-operator/pkg/label"
 	"github.com/anywhy/redis-operator/pkg/manager"
 	"github.com/anywhy/redis-operator/pkg/util"
-	"github.com/golang/glog"
 )
 
 type replicaMemeberManager struct {

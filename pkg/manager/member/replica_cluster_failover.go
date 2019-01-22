@@ -4,12 +4,12 @@ import (
 	"net"
 	"strings"
 
+	"github.com/golang/glog"
+	corelisters "k8s.io/client-go/listers/core/v1"
+
 	"github.com/anywhy/redis-operator/pkg/apis/redis/v1alpha1"
 	"github.com/anywhy/redis-operator/pkg/controller"
 	"github.com/anywhy/redis-operator/pkg/label"
-
-	"github.com/golang/glog"
-	corelisters "k8s.io/client-go/listers/core/v1"
 )
 
 type replicaFailover struct {
