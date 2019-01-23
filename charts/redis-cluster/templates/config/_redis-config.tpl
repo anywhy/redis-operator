@@ -836,6 +836,9 @@ lua-time-limit 5000
 # cluster node enable the cluster support uncommenting the following:
 #
 # cluster-enabled yes
+{{ if  if ((.Values.redis.mode) and (eq .Values.redis.mode "cluster")  }}
+cluster-enabled yes
+{{ end }}
 
 # Every cluster node has a cluster configuration file. This file is not
 # intended to be edited by hand. It is created and updated by Redis nodes.
@@ -845,11 +848,15 @@ lua-time-limit 5000
 #
 # cluster-config-file nodes-6379.conf
 
+cluster-config-file /data/nodes-6379.conf
+
 # Cluster node timeout is the amount of milliseconds a node must be unreachable
 # for it to be considered in failure state.
 # Most other internal time limits are multiple of the node timeout.
 #
 # cluster-node-timeout 15000
+
+cluster-node-timeout 15000
 
 # A replica of a failing master will avoid to start a failover if its data
 # looks too old.
@@ -895,6 +902,8 @@ lua-time-limit 5000
 # the cluster will always be able to continue.
 #
 # cluster-replica-validity-factor 10
+
+cluster-replica-validity-factor 10
 
 # Cluster replicas are able to migrate to orphaned masters, that are masters
 # that are left without working replicas. This improves the cluster ability
