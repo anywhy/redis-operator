@@ -3,17 +3,24 @@ package redisc
 import (
 	"fmt"
 	"net"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	redigo "github.com/gomodule/redigo/redis"
-
 	"github.com/anywhy/redis-operator/pkg/util/redis"
+	redigo "github.com/gomodule/redigo/redis"
 )
 
 const (
 	connTimeout = time.Second * 60
+
+	// UnusedHashSlot unused slot flag
+	UnusedHashSlot = iota
+	// NewHashSlot new solt flag
+	NewHashSlot
+	// AssignedHashSlot assigned slot flag
+	AssignedHashSlot
 )
 
 // Node redis instance attributes
@@ -128,4 +135,156 @@ func (cn *ClusterNode) ClusterAddSlots(args ...interface{}) (ret string, err err
 // ClusterDelSlots delete slot from cluster node
 func (cn *ClusterNode) ClusterDelSlots(args ...interface{}) (ret string, err error) {
 	return redigo.String(cn.Call("CLUSTER", "DELSLOTS", args))
+}
+
+// LoadInfo get cluster info from current node
+func (cn *ClusterNode) LoadInfo() error {
+	reply, err := redigo.String(cn.Call("CLUSTER", "NODES"))
+	if err != nil {
+		return err
+	}
+
+	nodes := strings.Split(reply, "\n")
+	for _, node := range nodes {
+		parts := strings.Split(node, " ")
+		if len(parts) <= 3 {
+			continue
+		}
+
+		sent, _ := strconv.ParseInt(parts[4], 0, 32)
+		recv, _ := strconv.ParseInt(parts[5], 0, 32)
+		addr := strings.Split(parts[1], "@")[0]
+		host, port, _ := net.SplitHostPort(addr)
+		p, _ := strconv.ParseUint(port, 10, 0)
+		node := &Node{
+			Name:       parts[0],
+			Flags:      strings.Split(parts[2], ","),
+			Replicate:  parts[3],
+			PingSent:   int(sent),
+			PingRecv:   int(recv),
+			LinkStatus: parts[6],
+
+			IP:        host,
+			Port:      int(p),
+			Slots:     make(map[int]int),
+			Migrating: make(map[int]string),
+			Importing: make(map[int]string),
+		}
+
+		if parts[3] == "-" {
+			node.Replicate = ""
+		}
+
+		if strings.Contains(parts[2], "myself") {
+			if cn.Info != nil {
+				cn.Info.Name = node.Name
+				cn.Info.Flags = node.Flags
+				cn.Info.Replicate = node.Replicate
+				cn.Info.PingSent = node.PingSent
+				cn.Info.PingRecv = node.PingRecv
+				cn.Info.LinkStatus = node.LinkStatus
+			} else {
+				cn.Info = node
+			}
+
+			for i := 8; i < len(parts); i++ {
+				slots := parts[i]
+				if strings.Contains(slots, "<") {
+					slotStr := strings.Split(slots, "-<-")
+					slotID, _ := strconv.Atoi(slotStr[0])
+					cn.Info.Importing[slotID] = slotStr[1]
+				} else if strings.Contains(slots, ">") {
+					slotStr := strings.Split(slots, "->-")
+					slotID, _ := strconv.Atoi(slotStr[0])
+					cn.Info.Migrating[slotID] = slotStr[1]
+				} else if strings.Contains(slots, "-") {
+					slotStr := strings.Split(slots, "-")
+					firstID, _ := strconv.Atoi(slotStr[0])
+					lastID, _ := strconv.Atoi(slotStr[1])
+					cn.AddSlots(firstID, lastID)
+				} else {
+					firstID, _ := strconv.Atoi(slots)
+					cn.AddSlots(firstID, firstID)
+				}
+			}
+		} else {
+			cn.Friends = append(cn.Friends, node)
+		}
+	}
+
+	return nil
+}
+
+// FlushNodeConfig flush node config
+func (cn *ClusterNode) FlushNodeConfig() {
+	if !cn.Dirty {
+		return
+	}
+
+	if cn.Info.Replicate != "" {
+		if _, err := cn.ClusterReplicateWithNodeID(cn.Info.Replicate); err != nil {
+			// If the cluster did not already joined it is possible that
+			// the slave does not know the master node yet. So on errors
+			// we return ASAP leaving the dirty flag set, to flush the
+			// config later.
+			return
+		}
+	} else {
+		var array []int
+		for s, value := range cn.Info.Slots {
+			if value == NewHashSlot {
+				array = append(array, s)
+				cn.Info.Slots[s] = AssignedHashSlot
+			}
+			cn.ClusterAddSlots(array)
+		}
+	}
+
+	cn.Dirty = false
+}
+
+// AddSlots add slot to cluster node
+func (cn *ClusterNode) AddSlots(start, end int) {
+	for i := start; i <= end; i++ {
+		cn.Info.Slots[i] = NewHashSlot
+	}
+	cn.Dirty = true
+}
+
+// GetConfigSignature get cluster node config signature
+func (cn *ClusterNode) GetConfigSignature() string {
+	configs := []string{}
+
+	reply, err := redigo.String(cn.Call("CLUSTER", "NODES"))
+	if err != nil {
+		return ""
+	}
+
+	nodes := strings.Split(reply, "\n")
+	for _, node := range nodes {
+		parts := strings.Split(node, " ")
+		if len(parts) <= 3 {
+			continue
+		}
+
+		sig := parts[0] + ":"
+		slots := []string{}
+		if len(parts) > 7 {
+			for i := 8; i < len(parts); i++ {
+				p := parts[i]
+				if !strings.Contains(p, "[") {
+					slots = append(slots, p)
+				}
+			}
+		}
+		if len(slots) == 0 {
+			continue
+		}
+		sort.Strings(slots)
+		sig = sig + strings.Join(slots, ",")
+
+		configs = append(configs, sig)
+	}
+
+	return strings.Join(configs, "|")
 }
