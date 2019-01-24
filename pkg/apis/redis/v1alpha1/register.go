@@ -16,7 +16,7 @@ var (
 	Scheme *runtime.Scheme
 
 	// groupName is the group name use in this package
-	groupName = "anywhy.github"
+	groupName = "anywhy.github.io"
 )
 
 // SchemeGroupVersion is group version used to register these objects

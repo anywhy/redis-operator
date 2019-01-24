@@ -20,7 +20,7 @@ import (
 	"github.com/anywhy/redis-operator/pkg/util"
 )
 
-type replicaMemeberManager struct {
+type replicaMemberManager struct {
 	setControl      controller.StatefulSetControlInterface
 	svcControl      controller.ServiceControlInterface
 	svcLister       corelisters.ServiceLister
@@ -55,7 +55,7 @@ func NewReplicaMemberManager(
 	replicaUpgrader Upgrader,
 	autoFailover bool,
 	replicaFailover Failover) manager.Manager {
-	rmm := &replicaMemeberManager{
+	rmm := &replicaMemberManager{
 		setControl:      setControl,
 		svcControl:      svcControl,
 		svcLister:       svcLister,
@@ -72,14 +72,14 @@ func NewReplicaMemberManager(
 }
 
 // Sync	implements redis logic for syncing Redis.
-func (rmm *replicaMemeberManager) Sync(rc *v1alpha1.Redis) error {
+func (rmm *replicaMemberManager) Sync(rc *v1alpha1.Redis) error {
 	if err := rmm.syncReplicaServiceForRedis(rc); err != nil {
 		return err
 	}
 	return rmm.syncReplicaStatefulSetForRedis(rc)
 }
 
-func (rmm *replicaMemeberManager) syncReplicaServiceForRedis(rc *v1alpha1.Redis) error {
+func (rmm *replicaMemberManager) syncReplicaServiceForRedis(rc *v1alpha1.Redis) error {
 	svcList := []ServiceConfig{
 		{
 			Name:     "redis-master",
@@ -134,7 +134,7 @@ func (rmm *replicaMemeberManager) syncReplicaServiceForRedis(rc *v1alpha1.Redis)
 	return nil
 }
 
-func (rmm *replicaMemeberManager) syncReplicaStatefulSetForRedis(rc *v1alpha1.Redis) error {
+func (rmm *replicaMemberManager) syncReplicaStatefulSetForRedis(rc *v1alpha1.Redis) error {
 	ns, rcName := rc.GetNamespace(), rc.Name
 
 	newSet, err := rmm.getNewReplicaStatefulSet(rc)
@@ -214,7 +214,7 @@ func (rmm *replicaMemeberManager) syncReplicaStatefulSetForRedis(rc *v1alpha1.Re
 }
 
 // init redis master
-func (rmm *replicaMemeberManager) initReplicaMaster(rc *v1alpha1.Redis) (*corev1.Pod, error) {
+func (rmm *replicaMemberManager) initReplicaMaster(rc *v1alpha1.Redis) (*corev1.Pod, error) {
 	ns, rcName := rc.GetNamespace(), rc.GetName()
 
 	masterPodName := ordinalPodName(v1alpha1.RedisMemberType, rcName, 0)
@@ -240,7 +240,7 @@ func (rmm *replicaMemeberManager) initReplicaMaster(rc *v1alpha1.Redis) (*corev1
 	return masterPod, nil
 }
 
-func (rmm *replicaMemeberManager) syncReplicaService(rc *v1alpha1.Redis, svcConfig ServiceConfig) error {
+func (rmm *replicaMemberManager) syncReplicaService(rc *v1alpha1.Redis, svcConfig ServiceConfig) error {
 	ns, rcName := rc.GetNamespace(), rc.GetName()
 
 	newSvc := rmm.getNewRedisServiceForRedis(rc, svcConfig)
@@ -273,7 +273,7 @@ func (rmm *replicaMemeberManager) syncReplicaService(rc *v1alpha1.Redis, svcConf
 	return nil
 }
 
-func (rmm *replicaMemeberManager) getNewRedisServiceForRedis(rc *v1alpha1.Redis, svcConfig ServiceConfig) *corev1.Service {
+func (rmm *replicaMemberManager) getNewRedisServiceForRedis(rc *v1alpha1.Redis, svcConfig ServiceConfig) *corev1.Service {
 	ns, rcName := rc.Namespace, rc.Name
 
 	svcName := svcConfig.MemberName(rcName)
@@ -308,7 +308,7 @@ func (rmm *replicaMemeberManager) getNewRedisServiceForRedis(rc *v1alpha1.Redis,
 	return svc
 }
 
-func (rmm *replicaMemeberManager) syncReplicaStatefulSetStatus(rc *v1alpha1.Redis, set *apps.StatefulSet) error {
+func (rmm *replicaMemberManager) syncReplicaStatefulSetStatus(rc *v1alpha1.Redis, set *apps.StatefulSet) error {
 	rc.Status.Replica.StatefulSet = &set.Status
 	upgrading, err := rmm.replicaIsUpgrading(set, rc)
 	if err != nil {
@@ -323,7 +323,7 @@ func (rmm *replicaMemeberManager) syncReplicaStatefulSetStatus(rc *v1alpha1.Redi
 	return nil
 }
 
-func (rmm *replicaMemeberManager) replicaIsUpgrading(set *apps.StatefulSet, rc *v1alpha1.Redis) (bool, error) {
+func (rmm *replicaMemberManager) replicaIsUpgrading(set *apps.StatefulSet, rc *v1alpha1.Redis) (bool, error) {
 	if statefulSetIsUpgrading(set) {
 		return true, nil
 	}
@@ -385,7 +385,7 @@ echo "redis-server ${ARGS}"
 exec redis-server ${ARGS} 
 `
 
-func (rmm *replicaMemeberManager) getNewReplicaStatefulSet(rc *v1alpha1.Redis) (*apps.StatefulSet, error) {
+func (rmm *replicaMemberManager) getNewReplicaStatefulSet(rc *v1alpha1.Redis) (*apps.StatefulSet, error) {
 	ns, rcName := rc.GetNamespace(), rc.GetName()
 	redisConfigMap := controller.RedisMemberName(rcName)
 
@@ -514,7 +514,7 @@ func (rmm *replicaMemeberManager) getNewReplicaStatefulSet(rc *v1alpha1.Redis) (
 	return rediSet, nil
 }
 
-func (rmm *replicaMemeberManager) volumeClaimTemplate(rc *v1alpha1.Redis, storageClassName *string) (corev1.PersistentVolumeClaim, error) {
+func (rmm *replicaMemberManager) volumeClaimTemplate(rc *v1alpha1.Redis, storageClassName *string) (corev1.PersistentVolumeClaim, error) {
 	var q, limit resource.Quantity
 	var err error
 
@@ -525,7 +525,7 @@ func (rmm *replicaMemeberManager) volumeClaimTemplate(rc *v1alpha1.Redis, storag
 		size := rc.Spec.Redis.Requests.Storage
 		q, err = resource.ParseQuantity(size)
 		if err != nil {
-			return pvc, fmt.Errorf("cant' get storage request size: %s for Redis: %s/%s, %v", size, ns, rcName, err)
+			return pvc, fmt.Errorf("cant' get storage request size: %s for Redis: %s/%s", size, ns, rcName)
 		}
 	}
 

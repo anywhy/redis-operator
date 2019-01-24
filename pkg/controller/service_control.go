@@ -9,12 +9,16 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 
 	"github.com/anywhy/redis-operator/pkg/apis/redis/v1alpha1"
+	rcinformers "github.com/anywhy/redis-operator/pkg/client/informers/externalversions/redis/v1alpha1"
+	v1listers "github.com/anywhy/redis-operator/pkg/client/listers/redis/v1alpha1"
 )
 
 // ServiceControlInterface manages Services used in Redis
@@ -109,3 +113,74 @@ func (sc *realServiceControl) recordServiceEvent(verb string, rc *v1alpha1.Redis
 }
 
 var _ ServiceControlInterface = &realServiceControl{}
+
+// FakeServiceControl is a fake ServiceControlInterface
+type FakeServiceControl struct {
+	SvcLister                corelisters.ServiceLister
+	SvcIndexer               cache.Indexer
+	RcLister                 v1listers.RedisLister
+	rcIndexer                cache.Indexer
+	createServiceTracker     requestTracker
+	updateServiceTracker     requestTracker
+	deleteStatefulSetTracker requestTracker
+}
+
+// NewFakeServiceControl returns a FakeServiceControl
+func NewFakeServiceControl(svcInformer coreinformers.ServiceInformer, rcInformer rcinformers.RedisInformer) *FakeServiceControl {
+	return &FakeServiceControl{
+		svcInformer.Lister(),
+		svcInformer.Informer().GetIndexer(),
+		rcInformer.Lister(),
+		rcInformer.Informer().GetIndexer(),
+		requestTracker{0, nil, 0},
+		requestTracker{0, nil, 0},
+		requestTracker{0, nil, 0},
+	}
+}
+
+// SetCreateServiceError sets the error attributes of createServiceTracker
+func (ssc *FakeServiceControl) SetCreateServiceError(err error, after int) {
+	ssc.createServiceTracker.err = err
+	ssc.createServiceTracker.after = after
+}
+
+// SetUpdateServiceError sets the error attributes of updateServiceTracker
+func (ssc *FakeServiceControl) SetUpdateServiceError(err error, after int) {
+	ssc.updateServiceTracker.err = err
+	ssc.updateServiceTracker.after = after
+}
+
+// SetDeleteServiceError sets the error attributes of deleteServiceTracker
+func (ssc *FakeServiceControl) SetDeleteServiceError(err error, after int) {
+	ssc.deleteStatefulSetTracker.err = err
+	ssc.deleteStatefulSetTracker.after = after
+}
+
+// CreateService adds the service to SvcIndexer
+func (ssc *FakeServiceControl) CreateService(_ *v1alpha1.Redis, svc *corev1.Service) error {
+	defer ssc.createServiceTracker.inc()
+	if ssc.createServiceTracker.errorReady() {
+		defer ssc.createServiceTracker.reset()
+		return ssc.createServiceTracker.err
+	}
+
+	return ssc.SvcIndexer.Add(svc)
+}
+
+// UpdateService updates the service of SvcIndexer
+func (ssc *FakeServiceControl) UpdateService(_ *v1alpha1.Redis, svc *corev1.Service) (*corev1.Service, error) {
+	defer ssc.updateServiceTracker.inc()
+	if ssc.updateServiceTracker.errorReady() {
+		defer ssc.updateServiceTracker.reset()
+		return nil, ssc.updateServiceTracker.err
+	}
+
+	return svc, ssc.SvcIndexer.Update(svc)
+}
+
+// DeleteService deletes the service of SvcIndexer
+func (ssc *FakeServiceControl) DeleteService(_ *v1alpha1.Redis, _ *corev1.Service) error {
+	return nil
+}
+
+var _ ServiceControlInterface = &FakeServiceControl{}

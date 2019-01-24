@@ -10,12 +10,16 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	appsinformers "k8s.io/client-go/informers/apps/v1beta1"
 	"k8s.io/client-go/kubernetes"
 	appslisters "k8s.io/client-go/listers/apps/v1beta1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 
 	"github.com/anywhy/redis-operator/pkg/apis/redis/v1alpha1"
+	rcinformers "github.com/anywhy/redis-operator/pkg/client/informers/externalversions/redis/v1alpha1"
+	v1listers "github.com/anywhy/redis-operator/pkg/client/listers/redis/v1alpha1"
 )
 
 // StatefulSetControlInterface defines the interface that uses to create, update, and delete StatefulSets,
@@ -110,3 +114,96 @@ func (sc *realStatefulSetControl) recordStatefulSetEvent(verb string, rc *v1alph
 }
 
 var _ StatefulSetControlInterface = &realStatefulSetControl{}
+
+// FakeStatefulSetControl is a fake StatefulSetControlInterface
+type FakeStatefulSetControl struct {
+	SetLister                appslisters.StatefulSetLister
+	SetIndexer               cache.Indexer
+	RcLister                 v1listers.RedisLister
+	RcIndexer                cache.Indexer
+	createStatefulSetTracker requestTracker
+	updateStatefulSetTracker requestTracker
+	deleteStatefulSetTracker requestTracker
+	statusChange             func(set *apps.StatefulSet)
+}
+
+// NewFakeStatefulSetControl returns a FakeStatefulSetControl
+func NewFakeStatefulSetControl(setInformer appsinformers.StatefulSetInformer, rcinformers rcinformers.RedisInformer) *FakeStatefulSetControl {
+	return &FakeStatefulSetControl{
+		setInformer.Lister(),
+		setInformer.Informer().GetIndexer(),
+		rcinformers.Lister(),
+		rcinformers.Informer().GetIndexer(),
+		requestTracker{0, nil, 0},
+		requestTracker{0, nil, 0},
+		requestTracker{0, nil, 0},
+		nil,
+	}
+}
+
+// SetCreateStatefulSetError sets the error attributes of createStatefulSetTracker
+func (ssc *FakeStatefulSetControl) SetCreateStatefulSetError(err error, after int) {
+	ssc.createStatefulSetTracker.err = err
+	ssc.createStatefulSetTracker.after = after
+}
+
+// SetUpdateStatefulSetError sets the error attributes of updateStatefulSetTracker
+func (ssc *FakeStatefulSetControl) SetUpdateStatefulSetError(err error, after int) {
+	ssc.updateStatefulSetTracker.err = err
+	ssc.updateStatefulSetTracker.after = after
+}
+
+// SetDeleteStatefulSetError sets the error attributes of deleteStatefulSetTracker
+func (ssc *FakeStatefulSetControl) SetDeleteStatefulSetError(err error, after int) {
+	ssc.deleteStatefulSetTracker.err = err
+	ssc.deleteStatefulSetTracker.after = after
+}
+
+// SetStatusChange sets the status change function
+func (ssc *FakeStatefulSetControl) SetStatusChange(fn func(*apps.StatefulSet)) {
+	ssc.statusChange = fn
+}
+
+// CreateStatefulSet adds the statefulset to SetIndexer
+func (ssc *FakeStatefulSetControl) CreateStatefulSet(_ *v1alpha1.Redis, set *apps.StatefulSet) error {
+	defer func() {
+		ssc.createStatefulSetTracker.inc()
+		ssc.statusChange = nil
+	}()
+
+	if ssc.createStatefulSetTracker.errorReady() {
+		defer ssc.createStatefulSetTracker.reset()
+		return ssc.createStatefulSetTracker.err
+	}
+
+	if ssc.statusChange != nil {
+		ssc.statusChange(set)
+	}
+
+	return ssc.SetIndexer.Add(set)
+}
+
+// UpdateStatefulSet updates the statefulset of SetIndexer
+func (ssc *FakeStatefulSetControl) UpdateStatefulSet(_ *v1alpha1.Redis, set *apps.StatefulSet) (*apps.StatefulSet, error) {
+	defer func() {
+		ssc.updateStatefulSetTracker.inc()
+		ssc.statusChange = nil
+	}()
+
+	if ssc.updateStatefulSetTracker.errorReady() {
+		defer ssc.updateStatefulSetTracker.reset()
+		return nil, ssc.updateStatefulSetTracker.err
+	}
+
+	if ssc.statusChange != nil {
+		ssc.statusChange(set)
+	}
+	return set, ssc.SetIndexer.Update(set)
+}
+
+// DeleteStatefulSet deletes the statefulset of SetIndexer
+func (ssc *FakeStatefulSetControl) DeleteStatefulSet(_ *v1alpha1.Redis, _ *apps.StatefulSet) error {
+	return nil
+}
+
+var _ StatefulSetControlInterface = &FakeStatefulSetControl{}

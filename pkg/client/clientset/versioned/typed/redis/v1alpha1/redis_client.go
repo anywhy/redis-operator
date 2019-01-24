@@ -29,7 +29,7 @@ type AnywhyV1alpha1Interface interface {
 	RedisesGetter
 }
 
-// AnywhyV1alpha1Client is used to interact with features provided by the anywhy.github group.
+// AnywhyV1alpha1Client is used to interact with features provided by the anywhy.github.io group.
 type AnywhyV1alpha1Client struct {
 	restClient rest.Interface
 }
