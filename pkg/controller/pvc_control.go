@@ -7,8 +7,10 @@ import (
 	"github.com/golang/glog"
 	corev1 "k8s.io/api/core/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 
@@ -117,3 +119,65 @@ func (rpc *realPVCControl) recordPVCEvent(verb string, rc *v1alpha1.Redis, pvcNa
 }
 
 var _ PVCControlInterface = &realPVCControl{}
+
+// FakePVCControl is a fake PVCControlInterface
+type FakePVCControl struct {
+	PVCIndexer       cache.Indexer
+	updatePVCTracker requestTracker
+	deletePVCTracker requestTracker
+}
+
+// NewFakePVCControl returns a FakePVCControl
+func NewFakePVCControl(pvcInformer coreinformers.PersistentVolumeClaimInformer) *FakePVCControl {
+	return &FakePVCControl{
+		pvcInformer.Informer().GetIndexer(),
+		requestTracker{0, nil, 0},
+		requestTracker{0, nil, 0},
+	}
+}
+
+// SetUpdatePVCError sets the error attributes of updatePVCTracker
+func (fpc *FakePVCControl) SetUpdatePVCError(err error, after int) {
+	fpc.updatePVCTracker.err = err
+	fpc.updatePVCTracker.after = after
+}
+
+// SetDeletePVCError sets the error attributes of deletePVCTracker
+func (fpc *FakePVCControl) SetDeletePVCError(err error, after int) {
+	fpc.deletePVCTracker.err = err
+	fpc.deletePVCTracker.after = after
+}
+
+// DeletePVC deletes the pvc
+func (fpc *FakePVCControl) DeletePVC(_ *v1alpha1.Redis, pvc *corev1.PersistentVolumeClaim) error {
+	defer fpc.deletePVCTracker.inc()
+	if fpc.deletePVCTracker.errorReady() {
+		defer fpc.deletePVCTracker.reset()
+		return fpc.deletePVCTracker.err
+	}
+
+	return fpc.PVCIndexer.Delete(pvc)
+}
+
+// UpdatePVC updates the annotation, labels and spec of pvc
+func (fpc *FakePVCControl) UpdatePVC(rc *v1alpha1.Redis, pvc *corev1.PersistentVolumeClaim, pod *corev1.Pod) (*corev1.PersistentVolumeClaim, error) {
+	defer fpc.updatePVCTracker.inc()
+	if fpc.updatePVCTracker.errorReady() {
+		defer fpc.updatePVCTracker.reset()
+		return nil, fpc.updatePVCTracker.err
+	}
+
+	if pvc.Annotations == nil {
+		pvc.Annotations = make(map[string]string)
+	}
+	if pvc.Labels == nil {
+		pvc.Labels = make(map[string]string)
+	}
+
+	podName := pod.GetName()
+	setIfNotEmpty(pvc.Annotations, label.AnnPodNameKey, podName)
+
+	return pvc, fpc.PVCIndexer.Update(pvc)
+}
+
+var _ PVCControlInterface = &FakePVCControl{}

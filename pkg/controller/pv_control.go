@@ -9,8 +9,10 @@ import (
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 
@@ -148,3 +150,68 @@ func (rpc *realPVControl) recordPVEvent(verb string, tc *v1alpha1.Redis, pvName 
 }
 
 var _ PVControlInterface = &realPVControl{}
+
+// FakePVControl is a fake PVControlInterface
+type FakePVControl struct {
+	PVCLister       corelisters.PersistentVolumeClaimLister
+	PVIndexer       cache.Indexer
+	updatePVTracker requestTracker
+}
+
+// NewFakePVControl returns a FakePVControl
+func NewFakePVControl(pvInformer coreinformers.PersistentVolumeInformer, pvcInformer coreinformers.PersistentVolumeClaimInformer) *FakePVControl {
+	return &FakePVControl{
+		pvcInformer.Lister(),
+		pvInformer.Informer().GetIndexer(),
+		requestTracker{0, nil, 0},
+	}
+}
+
+// SetUpdatePVError sets the error attributes of updatePVTracker
+func (fpc *FakePVControl) SetUpdatePVError(err error, after int) {
+	fpc.updatePVTracker.err = err
+	fpc.updatePVTracker.after = after
+}
+
+// PatchPVReclaimPolicy patchs the reclaim policy of PV
+func (fpc *FakePVControl) PatchPVReclaimPolicy(_ *v1alpha1.Redis, pv *corev1.PersistentVolume, reclaimPolicy corev1.PersistentVolumeReclaimPolicy) error {
+	defer fpc.updatePVTracker.inc()
+	if fpc.updatePVTracker.errorReady() {
+		defer fpc.updatePVTracker.reset()
+		return fpc.updatePVTracker.err
+	}
+	pv.Spec.PersistentVolumeReclaimPolicy = reclaimPolicy
+
+	return fpc.PVIndexer.Update(pv)
+}
+
+// UpdatePV update a pv in a Redis.
+func (fpc *FakePVControl) UpdatePV(rc *v1alpha1.Redis, pv *corev1.PersistentVolume) (*corev1.PersistentVolume, error) {
+	ns := rc.GetNamespace()
+	if pv.Labels == nil {
+		pv.Labels = make(map[string]string)
+	}
+	if pv.Annotations == nil {
+		pv.Annotations = make(map[string]string)
+	}
+
+	pvcName := pv.Spec.ClaimRef.Name
+	pvc, err := fpc.PVCLister.PersistentVolumeClaims(ns).Get(pvcName)
+	if err != nil {
+		return nil, err
+	}
+
+	component := pvc.Labels[label.ComponentLabelKey]
+	podName := pvc.Annotations[label.AnnPodNameKey]
+	pv.Labels[label.NamespaceLabelKey] = ns
+	pv.Labels[label.ComponentLabelKey] = component
+	pv.Labels[label.NameLabelKey] = pvc.Labels[label.NameLabelKey]
+	pv.Labels[label.ManagedByLabelKey] = pvc.Labels[label.ManagedByLabelKey]
+	pv.Labels[label.InstanceLabelKey] = pvc.Labels[label.InstanceLabelKey]
+
+	setIfNotEmpty(pv.Annotations, label.AnnPodNameKey, podName)
+
+	return pv, fpc.PVIndexer.Update(pv)
+}
+
+var _ PVControlInterface = &FakePVControl{}
