@@ -146,6 +146,8 @@ var (
 	TestManagedByName = "redis-operator"
 	// TestClusterName cluster name
 	TestClusterName = "test"
+	// TestPodName cluster pod name
+	TestPodName = "test-pod"
 )
 
 // FakePodControl is a fake PodControlInterface

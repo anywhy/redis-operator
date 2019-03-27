@@ -187,6 +187,12 @@ func (fpc *FakePVControl) PatchPVReclaimPolicy(_ *v1alpha1.Redis, pv *corev1.Per
 
 // UpdatePV update a pv in a Redis.
 func (fpc *FakePVControl) UpdatePV(rc *v1alpha1.Redis, pv *corev1.PersistentVolume) (*corev1.PersistentVolume, error) {
+	defer fpc.updatePVTracker.inc()
+	if fpc.updatePVTracker.errorReady() {
+		defer fpc.updatePVTracker.reset()
+		return nil, fpc.updatePVTracker.err
+	}
+
 	ns := rc.GetNamespace()
 	if pv.Labels == nil {
 		pv.Labels = make(map[string]string)
