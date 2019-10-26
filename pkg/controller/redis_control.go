@@ -90,13 +90,13 @@ func (rrc *realRedisControl) recordRedisEvent(verb string, rc *v1alpha1.RedisClu
 
 // FakeRedisControl is a fake RedisControlInterface
 type FakeRedisControl struct {
-	RcLister           listers.RedisLister
+	RcLister           listers.RedisClusterLister
 	RcIndexer          cache.Indexer
 	updateRedisTracker requestTracker
 }
 
 // NewFakeFakeRedisControl returns a FakeRedisControl
-func NewFakeFakeRedisControl(rcInformer rcinformers.RedisInformer) *FakeRedisControl {
+func NewFakeFakeRedisControl(rcInformer rcinformers.RedisClusterInformer) *FakeRedisControl {
 	return &FakeRedisControl{
 		rcInformer.Lister(),
 		rcInformer.Informer().GetIndexer(),
