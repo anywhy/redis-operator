@@ -21,7 +21,7 @@ import (
 	"github.com/anywhy/redis-operator/pkg/client/clientset/versioned"
 	informers "github.com/anywhy/redis-operator/pkg/client/informers/externalversions"
 	"github.com/anywhy/redis-operator/pkg/controller/redis"
-	"github.com/anywhy/redis-operator/version"
+	"github.com/anywhy/redis-operator/pkg/version"
 )
 
 // NewRedisControllerManagerCommand creates a *cobra.Command object with default parameters
