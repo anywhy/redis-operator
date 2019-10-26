@@ -15,7 +15,7 @@ func (rc *RedisCluster) SentinelIsOk() bool {
 	return sentSet.Replicas == sentSet.ReadyReplicas
 }
 
-// SentinelEnable sentinel is enable
-func (rc *RedisCluster) SentinelEnable() bool {
+// IsEnableSentinel sentinel is enable
+func (rc *RedisCluster) IsEnableSentinel() bool {
 	return rc.Spec.Sentinel.Enable
 }

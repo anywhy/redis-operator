@@ -9,5 +9,5 @@ import (
 // Upgrader implements the logic for upgrading the redis cluster.
 type Upgrader interface {
 	// Upgrade upgrade the cluster
-	Upgrade(*v1alpha1.Redis, *apps.StatefulSet, *apps.StatefulSet) error
+	Upgrade(*v1alpha1.RedisCluster, *apps.StatefulSet, *apps.StatefulSet) error
 }

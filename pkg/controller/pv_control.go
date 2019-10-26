@@ -22,8 +22,8 @@ import (
 
 // PVControlInterface manages PVs used in Redis
 type PVControlInterface interface {
-	UpdatePV(*v1alpha1.Redis, *corev1.PersistentVolume) (*corev1.PersistentVolume, error)
-	PatchPVReclaimPolicy(*v1alpha1.Redis, *corev1.PersistentVolume, corev1.PersistentVolumeReclaimPolicy) error
+	UpdatePV(*v1alpha1.RedisCluster, *corev1.PersistentVolume) (*corev1.PersistentVolume, error)
+	PatchPVReclaimPolicy(*v1alpha1.RedisCluster, *corev1.PersistentVolume, corev1.PersistentVolumeReclaimPolicy) error
 }
 
 type realPVControl struct {
@@ -49,7 +49,7 @@ func NewRealPVControl(
 }
 
 // UpdatePV update a pv in a Redis.
-func (rpc *realPVControl) UpdatePV(rc *v1alpha1.Redis, pv *corev1.PersistentVolume) (*corev1.PersistentVolume, error) {
+func (rpc *realPVControl) UpdatePV(rc *v1alpha1.RedisCluster, pv *corev1.PersistentVolume) (*corev1.PersistentVolume, error) {
 	ns, rcName := rc.GetNamespace(), rc.GetName()
 	if pv.Labels == nil {
 		pv.Labels = make(map[string]string)
@@ -121,7 +121,7 @@ func (rpc *realPVControl) UpdatePV(rc *v1alpha1.Redis, pv *corev1.PersistentVolu
 }
 
 // PatchPVReclaimPolicy update a pvclaim in a Redis.
-func (rpc *realPVControl) PatchPVReclaimPolicy(rc *v1alpha1.Redis, pv *corev1.PersistentVolume,
+func (rpc *realPVControl) PatchPVReclaimPolicy(rc *v1alpha1.RedisCluster, pv *corev1.PersistentVolume,
 	reclaimPolicy corev1.PersistentVolumeReclaimPolicy) error {
 	pvName := pv.GetName()
 	patchBytes := []byte(fmt.Sprintf(`{"spec":{"persistentVolumeReclaimPolicy":"%s"}}`, reclaimPolicy))
@@ -134,7 +134,7 @@ func (rpc *realPVControl) PatchPVReclaimPolicy(rc *v1alpha1.Redis, pv *corev1.Pe
 	return err
 }
 
-func (rpc *realPVControl) recordPVEvent(verb string, tc *v1alpha1.Redis, pvName string, err error) {
+func (rpc *realPVControl) recordPVEvent(verb string, tc *v1alpha1.RedisCluster, pvName string, err error) {
 	tcName := tc.GetName()
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
@@ -174,7 +174,7 @@ func (fpc *FakePVControl) SetUpdatePVError(err error, after int) {
 }
 
 // PatchPVReclaimPolicy patchs the reclaim policy of PV
-func (fpc *FakePVControl) PatchPVReclaimPolicy(_ *v1alpha1.Redis, pv *corev1.PersistentVolume, reclaimPolicy corev1.PersistentVolumeReclaimPolicy) error {
+func (fpc *FakePVControl) PatchPVReclaimPolicy(_ *v1alpha1.RedisCluster, pv *corev1.PersistentVolume, reclaimPolicy corev1.PersistentVolumeReclaimPolicy) error {
 	defer fpc.updatePVTracker.inc()
 	if fpc.updatePVTracker.errorReady() {
 		defer fpc.updatePVTracker.reset()
@@ -186,7 +186,7 @@ func (fpc *FakePVControl) PatchPVReclaimPolicy(_ *v1alpha1.Redis, pv *corev1.Per
 }
 
 // UpdatePV update a pv in a Redis.
-func (fpc *FakePVControl) UpdatePV(rc *v1alpha1.Redis, pv *corev1.PersistentVolume) (*corev1.PersistentVolume, error) {
+func (fpc *FakePVControl) UpdatePV(rc *v1alpha1.RedisCluster, pv *corev1.PersistentVolume) (*corev1.PersistentVolume, error) {
 	defer fpc.updatePVTracker.inc()
 	if fpc.updatePVTracker.errorReady() {
 		defer fpc.updatePVTracker.reset()

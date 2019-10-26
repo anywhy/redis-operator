@@ -21,7 +21,7 @@ func (frmm *FakeRedisClusterMemberManager) SetSyncError(err error) {
 }
 
 // Sync sync info
-func (frmm *FakeRedisClusterMemberManager) Sync(_ *v1alpha1.Redis) error {
+func (frmm *FakeRedisClusterMemberManager) Sync(_ *v1alpha1.RedisCluster) error {
 	if frmm.err != nil {
 		return frmm.err
 	}

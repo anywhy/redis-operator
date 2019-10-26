@@ -20,19 +20,19 @@ import (
 
 // RedisControlInterface manages Redises
 type RedisControlInterface interface {
-	UpdateRedis(rc *v1alpha1.Redis, newStatus *v1alpha1.RedisStatus,
-		oldStatus *v1alpha1.RedisStatus) (*v1alpha1.Redis, error)
+	UpdateRedis(rc *v1alpha1.RedisCluster, newStatus *v1alpha1.RedisClusterStatus,
+		oldStatus *v1alpha1.RedisClusterStatus) (*v1alpha1.RedisCluster, error)
 }
 
 type realRedisControl struct {
 	cli      versioned.Interface
-	rcLister listers.RedisLister
+	rcLister listers.RedisClusterLister
 	recorder record.EventRecorder
 }
 
 // NewRealRedisControl creates a new RedisControlInterface
 func NewRealRedisControl(cli versioned.Interface,
-	rcLister listers.RedisLister,
+	rcLister listers.RedisClusterLister,
 	recorder record.EventRecorder) RedisControlInterface {
 	return &realRedisControl{
 		cli,
@@ -41,23 +41,23 @@ func NewRealRedisControl(cli versioned.Interface,
 	}
 }
 
-func (rrc *realRedisControl) UpdateRedis(rc *v1alpha1.Redis,
-	newStatus *v1alpha1.RedisStatus, oldStatus *v1alpha1.RedisStatus) (*v1alpha1.Redis, error) {
+func (rrc *realRedisControl) UpdateRedis(rc *v1alpha1.RedisCluster,
+	newStatus *v1alpha1.RedisClusterStatus, oldStatus *v1alpha1.RedisClusterStatus) (*v1alpha1.RedisCluster, error) {
 	ns, rcName := rc.GetNamespace(), rc.GetName()
 	status := rc.Status.DeepCopy()
-	var updateRC *v1alpha1.Redis
+	var updateRC *v1alpha1.RedisCluster
 
 	// don't wait due to limited number of clients, but backoff after the default number of steps
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		var updateErr error
-		updateRC, updateErr = rrc.cli.Anywhy().Redises(ns).Update(rc)
+		updateRC, updateErr = rrc.cli.Anywhy().RedisClusters(ns).Update(rc)
 		if updateErr == nil {
 			glog.Infof("Redis: [%s/%s] updated successfully", ns, rcName)
 			return nil
 		}
 		glog.Errorf("failed to update Redis: [%s/%s], error: %v", ns, rcName, updateErr)
 
-		if updated, err := rrc.rcLister.Redises(ns).Get(rcName); err == nil {
+		if updated, err := rrc.rcLister.RedisClusters(ns).Get(rcName); err == nil {
 			// make a copy so we don't mutate the shared cache
 			rc = updated.DeepCopy()
 			rc.Status = *status
@@ -73,7 +73,7 @@ func (rrc *realRedisControl) UpdateRedis(rc *v1alpha1.Redis,
 	return updateRC, err
 }
 
-func (rrc *realRedisControl) recordRedisEvent(verb string, rc *v1alpha1.Redis, err error) {
+func (rrc *realRedisControl) recordRedisEvent(verb string, rc *v1alpha1.RedisCluster, err error) {
 	rcName := rc.GetName()
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
@@ -111,7 +111,8 @@ func (frc *FakeRedisControl) SetUpdateRedisError(err error, after int) {
 }
 
 // UpdateRedis updates the redis cluster
-func (frc *FakeRedisControl) UpdateRedis(rc *v1alpha1.Redis, _ *v1alpha1.RedisStatus, _ *v1alpha1.RedisStatus) (*v1alpha1.Redis, error) {
+func (frc *FakeRedisControl) UpdateRedis(rc *v1alpha1.RedisCluster, _ *v1alpha1.RedisClusterStatus,
+	_ *v1alpha1.RedisClusterStatus) (*v1alpha1.RedisCluster, error) {
 	defer frc.updateRedisTracker.inc()
 	if frc.updateRedisTracker.errorReady() {
 		defer frc.updateRedisTracker.reset()

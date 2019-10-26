@@ -46,7 +46,7 @@ func IsRequeueError(err error) bool {
 }
 
 // GetOwnerRef returns Redis's OwnerReference
-func GetOwnerRef(rc *v1alpha1.Redis) metav1.OwnerReference {
+func GetOwnerRef(rc *v1alpha1.RedisCluster) metav1.OwnerReference {
 	controller := true
 	blockOwnerDeletion := true
 	return metav1.OwnerReference{

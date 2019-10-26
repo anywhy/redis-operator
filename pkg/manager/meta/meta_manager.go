@@ -42,14 +42,14 @@ func NewMetaManager(
 	}
 }
 
-func (mm *metaManager) Sync(rc *v1alpha1.Redis) error {
-	if rc.Spec.Mode == v1alpha1.ReplicaCluster {
+func (mm *metaManager) Sync(rc *v1alpha1.RedisCluster) error {
+	if rc.Spec.Mode == v1alpha1.Replica {
 		return mm.syncReplicaCluster(rc)
 	}
 	return mm.syncRedisCluster(rc)
 }
 
-func (mm *metaManager) syncReplicaCluster(rc *v1alpha1.Redis) error {
+func (mm *metaManager) syncReplicaCluster(rc *v1alpha1.RedisCluster) error {
 	ns, labels := rc.GetNamespace(), rc.GetLabels()
 	instanceName := labels[label.InstanceLabelKey]
 	l, err := label.New().Instance(instanceName).Replica().Selector()
@@ -99,7 +99,7 @@ func (mm *metaManager) syncReplicaCluster(rc *v1alpha1.Redis) error {
 	return nil
 }
 
-func (mm *metaManager) syncRedisCluster(rc *v1alpha1.Redis) error {
+func (mm *metaManager) syncRedisCluster(rc *v1alpha1.RedisCluster) error {
 	return nil
 }
 
@@ -145,7 +145,7 @@ func (fmm *FakeMetaManager) SetSyncError(err error) {
 }
 
 // Sync sync info
-func (fmm *FakeMetaManager) Sync(_ *v1alpha1.Redis) error {
+func (fmm *FakeMetaManager) Sync(_ *v1alpha1.RedisCluster) error {
 	if fmm.err != nil {
 		return fmm.err
 	}

@@ -24,10 +24,10 @@ func NewReplicaUpgrader(podControl controller.PodControlInterface,
 	}
 }
 
-func (ru *replicaUpgrader) Upgrade(rc *v1alpha1.Redis, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
+func (ru *replicaUpgrader) Upgrade(rc *v1alpha1.RedisCluster, oldSet *apps.StatefulSet, newSet *apps.StatefulSet) error {
 	ns, rcName := rc.GetNamespace(), rc.GetName()
 
-	if rc.Status.Replica.Phase == v1alpha1.UpgradePhase {
+	if rc.Status.Redis.Phase == v1alpha1.UpgradePhase {
 		_, podSpec, err := GetLastAppliedConfig(oldSet)
 		if err != nil {
 			return err
@@ -36,13 +36,13 @@ func (ru *replicaUpgrader) Upgrade(rc *v1alpha1.Redis, oldSet *apps.StatefulSet,
 		return nil
 	}
 
-	rc.Status.Replica.Phase = v1alpha1.UpgradePhase
+	rc.Status.Redis.Phase = v1alpha1.UpgradePhase
 	if !templateEqual(newSet.Spec.Template, oldSet.Spec.Template) {
 		return nil
 	}
 
 	setUpgradePartition(newSet, *oldSet.Spec.UpdateStrategy.RollingUpdate.Partition)
-	for i := rc.Status.Replica.StatefulSet.Replicas - 1; i >= 0; i-- {
+	for i := rc.Status.Redis.StatefulSet.Replicas - 1; i >= 0; i-- {
 		podName := replicaPodName(rcName, i)
 		pod, err := ru.podLister.Pods(ns).Get(podName)
 		if err != nil {
@@ -68,12 +68,12 @@ func (ru *replicaUpgrader) Upgrade(rc *v1alpha1.Redis, oldSet *apps.StatefulSet,
 	return nil
 }
 
-func (ru *replicaUpgrader) upgradeReplicaPod(rc *v1alpha1.Redis, ordinal int32, newSet *apps.StatefulSet) error {
+func (ru *replicaUpgrader) upgradeReplicaPod(rc *v1alpha1.RedisCluster, ordinal int32, newSet *apps.StatefulSet) error {
 	setUpgradePartition(newSet, ordinal)
 	return nil
 }
 
-func (ru *replicaUpgrader) shoudUpgradePod(rc *v1alpha1.Redis, pod *corev1.Pod) (bool, error) {
+func (ru *replicaUpgrader) shoudUpgradePod(rc *v1alpha1.RedisCluster, pod *corev1.Pod) (bool, error) {
 	ns, rcName := rc.GetNamespace(), rc.GetName()
 	instanceName := rc.GetLabels()[label.InstanceLabelKey]
 	l, err := label.New().Instance(instanceName).Replica().Slave().Selector()
@@ -94,15 +94,15 @@ func (ru *replicaUpgrader) shoudUpgradePod(rc *v1alpha1.Redis, pod *corev1.Pod) 
 			return false, controller.RequeueErrorf("replicacluster: [%s/%s]'s redis pod: [%s] has no label: %s",
 				ns, rcName, slave.Name, apps.ControllerRevisionHashLabelKey)
 		}
-		if revision == rc.Status.Replica.StatefulSet.UpdateRevision {
+		if revision == rc.Status.Redis.StatefulSet.UpdateRevision {
 			upgraded++
 		}
 	}
 
 	revision, _ := pod.Labels[apps.ControllerRevisionHashLabelKey]
 	role := pod.GetLabels()[label.ComponentLabelKey]
-	if revision == rc.Status.Replica.StatefulSet.UpdateRevision ||
-		(upgraded != int(rc.Spec.Redis.Members)-1 && role == label.MasterLabelKey) {
+	if revision == rc.Status.Redis.StatefulSet.UpdateRevision ||
+		(upgraded != int(rc.Spec.Redis.Replicas)-1 && role == label.MasterLabelKey) {
 		return false, nil
 	}
 
@@ -116,7 +116,7 @@ func NewFakeReplicaUpgraderr() Upgrader {
 	return &fakeReplicaUpgrader{}
 }
 
-func (fru *fakeReplicaUpgrader) Upgrade(rc *v1alpha1.Redis, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
-	rc.Status.Replica.Phase = v1alpha1.UpgradePhase
+func (fru *fakeReplicaUpgrader) Upgrade(rc *v1alpha1.RedisCluster, _ *apps.StatefulSet, _ *apps.StatefulSet) error {
+	rc.Status.Redis.Phase = v1alpha1.UpgradePhase
 	return nil
 }

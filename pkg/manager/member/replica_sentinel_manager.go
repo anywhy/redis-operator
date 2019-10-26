@@ -43,8 +43,8 @@ func NewSentinelMemberManager(
 }
 
 // Sync	implements sentinel logic for syncing Redis.
-func (smm *sentinelMemberManager) Sync(rc *v1alpha1.Redis) error {
-	if rc.Spec.Mode == v1alpha1.ReplicaCluster {
+func (smm *sentinelMemberManager) Sync(rc *v1alpha1.RedisCluster) error {
+	if rc.Spec.Mode == v1alpha1.Cluster {
 		// Sync sentinel service
 		if err := smm.syncSentinelServiceForRedis(rc); err != nil {
 			return err
@@ -54,7 +54,7 @@ func (smm *sentinelMemberManager) Sync(rc *v1alpha1.Redis) error {
 	return nil
 }
 
-func (smm *sentinelMemberManager) syncSentinelStatefulSetForRedis(rc *v1alpha1.Redis) error {
+func (smm *sentinelMemberManager) syncSentinelStatefulSetForRedis(rc *v1alpha1.RedisCluster) error {
 	ns, rcName := rc.Namespace, rc.Name
 
 	newSentiSet, err := smm.getNewSentinelStatefulSet(rc)
@@ -110,7 +110,7 @@ func (smm *sentinelMemberManager) syncSentinelStatefulSetForRedis(rc *v1alpha1.R
 	return nil
 }
 
-func (smm *sentinelMemberManager) syncSentinelServiceForRedis(rc *v1alpha1.Redis) error {
+func (smm *sentinelMemberManager) syncSentinelServiceForRedis(rc *v1alpha1.RedisCluster) error {
 	svcList := []ServiceConfig{
 		// {
 		// 	Name:       "sentinel",
@@ -137,7 +137,7 @@ func (smm *sentinelMemberManager) syncSentinelServiceForRedis(rc *v1alpha1.Redis
 	return nil
 }
 
-func (smm *sentinelMemberManager) syncSentinelService(rc *v1alpha1.Redis, svcConfig ServiceConfig) error {
+func (smm *sentinelMemberManager) syncSentinelService(rc *v1alpha1.RedisCluster, svcConfig ServiceConfig) error {
 	ns, rcName := rc.GetNamespace(), rc.GetName()
 
 	newSvc := smm.getNewSentinelServiceForRedis(rc, svcConfig)
@@ -170,7 +170,7 @@ func (smm *sentinelMemberManager) syncSentinelService(rc *v1alpha1.Redis, svcCon
 	return nil
 }
 
-func (smm *sentinelMemberManager) syncRedisStatus(rc *v1alpha1.Redis, set *apps.StatefulSet) error {
+func (smm *sentinelMemberManager) syncRedisStatus(rc *v1alpha1.RedisCluster, set *apps.StatefulSet) error {
 	rc.Status.Sentinel.StatefulSet = &set.Status
 	upgrading, err := smm.sentinelIsUpgrading(set, rc)
 	if err != nil {
@@ -185,7 +185,7 @@ func (smm *sentinelMemberManager) syncRedisStatus(rc *v1alpha1.Redis, set *apps.
 	return nil
 }
 
-func (smm *sentinelMemberManager) getNewSentinelServiceForRedis(rc *v1alpha1.Redis, svcConfig ServiceConfig) *corev1.Service {
+func (smm *sentinelMemberManager) getNewSentinelServiceForRedis(rc *v1alpha1.RedisCluster, svcConfig ServiceConfig) *corev1.Service {
 	ns, rcName := rc.Namespace, rc.Name
 
 	svcName := svcConfig.MemberName(rcName)
@@ -220,7 +220,7 @@ func (smm *sentinelMemberManager) getNewSentinelServiceForRedis(rc *v1alpha1.Red
 	return svc
 }
 
-func (smm *sentinelMemberManager) sentinelIsUpgrading(set *apps.StatefulSet, rc *v1alpha1.Redis) (bool, error) {
+func (smm *sentinelMemberManager) sentinelIsUpgrading(set *apps.StatefulSet, rc *v1alpha1.RedisCluster) (bool, error) {
 	if statefulSetIsUpgrading(set) {
 		return true, nil
 	}
@@ -251,7 +251,7 @@ const sentinelCmd = `
 redis-server /etc/redis/sentinel.conf --sentinel
 `
 
-func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.Redis) (*apps.StatefulSet, error) {
+func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.RedisCluster) (*apps.StatefulSet, error) {
 	ns, rcName := rc.GetNamespace(), rc.GetName()
 	redisConfigMap := controller.RedisMemberName(rcName)
 
@@ -369,7 +369,7 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.Redis) 
 	return sentiSet, nil
 }
 
-func (smm *sentinelMemberManager) volumeClaimTemplate(rc *v1alpha1.Redis, storageClassName *string) (corev1.PersistentVolumeClaim, error) {
+func (smm *sentinelMemberManager) volumeClaimTemplate(rc *v1alpha1.RedisCluster, storageClassName *string) (corev1.PersistentVolumeClaim, error) {
 	var pvc corev1.PersistentVolumeClaim
 
 	size, _ := resource.ParseQuantity("10Mi")
@@ -410,7 +410,7 @@ func (fsmm *FakeSentinelMemberManager) SetSyncError(err error) {
 }
 
 // Sync sync info
-func (fsmm *FakeSentinelMemberManager) Sync(_ *v1alpha1.Redis) error {
+func (fsmm *FakeSentinelMemberManager) Sync(_ *v1alpha1.RedisCluster) error {
 	if fsmm.err != nil {
 		return fsmm.err
 	}

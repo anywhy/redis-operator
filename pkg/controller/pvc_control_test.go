@@ -143,7 +143,7 @@ func newFakeClientAndRecorder() (*fake.Clientset, corelisters.PersistentVolumeCl
 	return kubeCli, pvcInformer.Lister(), pvcInformer.Informer().GetIndexer(), recorder
 }
 
-func newPVC(rc *v1alpha1.Redis) *corev1.PersistentVolumeClaim {
+func newPVC(rc *v1alpha1.RedisCluster) *corev1.PersistentVolumeClaim {
 	return &corev1.PersistentVolumeClaim{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "PersistentVolumeClaim",

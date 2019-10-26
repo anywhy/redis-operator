@@ -20,8 +20,8 @@ import (
 
 // PVCControlInterface manages PVCs used in Redis
 type PVCControlInterface interface {
-	UpdatePVC(*v1alpha1.Redis, *corev1.PersistentVolumeClaim, *corev1.Pod) (*corev1.PersistentVolumeClaim, error)
-	DeletePVC(*v1alpha1.Redis, *corev1.PersistentVolumeClaim) error
+	UpdatePVC(*v1alpha1.RedisCluster, *corev1.PersistentVolumeClaim, *corev1.Pod) (*corev1.PersistentVolumeClaim, error)
+	DeletePVC(*v1alpha1.RedisCluster, *corev1.PersistentVolumeClaim) error
 }
 
 type realPVCControl struct {
@@ -43,7 +43,7 @@ func NewRealPVCControl(
 }
 
 // UpdatePVC update a pvc in a Redis.
-func (rpc *realPVCControl) UpdatePVC(rc *v1alpha1.Redis, pvc *corev1.PersistentVolumeClaim, pod *corev1.Pod) (*corev1.PersistentVolumeClaim, error) {
+func (rpc *realPVCControl) UpdatePVC(rc *v1alpha1.RedisCluster, pvc *corev1.PersistentVolumeClaim, pod *corev1.Pod) (*corev1.PersistentVolumeClaim, error) {
 	ns, rcName := rc.GetNamespace(), rc.GetName()
 	pvcName := pvc.GetName()
 
@@ -93,7 +93,7 @@ func (rpc *realPVCControl) UpdatePVC(rc *v1alpha1.Redis, pvc *corev1.PersistentV
 }
 
 // DeletePVC delete a pvc in a Redis.
-func (rpc *realPVCControl) DeletePVC(rc *v1alpha1.Redis, pvc *corev1.PersistentVolumeClaim) error {
+func (rpc *realPVCControl) DeletePVC(rc *v1alpha1.RedisCluster, pvc *corev1.PersistentVolumeClaim) error {
 	err := rpc.kubeCli.CoreV1().PersistentVolumeClaims(rc.Namespace).Delete(pvc.Name, nil)
 	if err != nil {
 		glog.Errorf("failed to delete PVC: [%s/%s], Redis: %s, %v", rc.Namespace, pvc.Name, rc.Name, err)
@@ -103,7 +103,7 @@ func (rpc *realPVCControl) DeletePVC(rc *v1alpha1.Redis, pvc *corev1.PersistentV
 	return err
 }
 
-func (rpc *realPVCControl) recordPVCEvent(verb string, rc *v1alpha1.Redis, pvcName string, err error) {
+func (rpc *realPVCControl) recordPVCEvent(verb string, rc *v1alpha1.RedisCluster, pvcName string, err error) {
 	rcName := rc.GetName()
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
@@ -149,7 +149,7 @@ func (fpc *FakePVCControl) SetDeletePVCError(err error, after int) {
 }
 
 // DeletePVC deletes the pvc
-func (fpc *FakePVCControl) DeletePVC(_ *v1alpha1.Redis, pvc *corev1.PersistentVolumeClaim) error {
+func (fpc *FakePVCControl) DeletePVC(_ *v1alpha1.RedisCluster, pvc *corev1.PersistentVolumeClaim) error {
 	defer fpc.deletePVCTracker.inc()
 	if fpc.deletePVCTracker.errorReady() {
 		defer fpc.deletePVCTracker.reset()
@@ -160,7 +160,7 @@ func (fpc *FakePVCControl) DeletePVC(_ *v1alpha1.Redis, pvc *corev1.PersistentVo
 }
 
 // UpdatePVC updates the annotation, labels and spec of pvc
-func (fpc *FakePVCControl) UpdatePVC(rc *v1alpha1.Redis, pvc *corev1.PersistentVolumeClaim, pod *corev1.Pod) (*corev1.PersistentVolumeClaim, error) {
+func (fpc *FakePVCControl) UpdatePVC(rc *v1alpha1.RedisCluster, pvc *corev1.PersistentVolumeClaim, pod *corev1.Pod) (*corev1.PersistentVolumeClaim, error) {
 	defer fpc.updatePVCTracker.inc()
 	if fpc.updatePVCTracker.errorReady() {
 		defer fpc.updatePVCTracker.reset()

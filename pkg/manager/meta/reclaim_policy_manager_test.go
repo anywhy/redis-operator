@@ -9,8 +9,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func newRedisClusterForMeta() *v1alpha1.Redis {
-	return &v1alpha1.Redis{
+func newRedisClusterForMeta() *v1alpha1.RedisCluster {
+	return &v1alpha1.RedisCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Redis",
 			APIVersion: "anywhy.github.io/v1alpha1",
@@ -21,8 +21,8 @@ func newRedisClusterForMeta() *v1alpha1.Redis {
 			UID:       types.UID("test"),
 			Labels:    label.New().Instance(controller.TestClusterName),
 		},
-		Spec: v1alpha1.RedisSpec{
-			Mode:            v1alpha1.ReplicaCluster,
+		Spec: v1alpha1.RedisClusterSpec{
+			Mode:            v1alpha1.Replica,
 			PVReclaimPolicy: corev1.PersistentVolumeReclaimRetain,
 		},
 	}
@@ -52,7 +52,7 @@ func newPV() *corev1.PersistentVolume {
 	}
 }
 
-func newPVC(rc *v1alpha1.Redis) *corev1.PersistentVolumeClaim {
+func newPVC(rc *v1alpha1.RedisCluster) *corev1.PersistentVolumeClaim {
 	return &corev1.PersistentVolumeClaim{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "PersistentVolumeClaim",
