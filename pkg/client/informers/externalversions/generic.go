@@ -52,8 +52,8 @@ func (f *genericInformer) Lister() cache.GenericLister {
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
 	// Group=anywhy.github.io, Version=v1alpha1
-	case v1alpha1.SchemeGroupVersion.WithResource("redises"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Anywhy().V1alpha1().Redises().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("redisclusters"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Anywhy().V1alpha1().RedisClusters().Informer()}, nil
 
 	}
 

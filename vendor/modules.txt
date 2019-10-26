@@ -83,9 +83,9 @@ github.com/pkg/errors
 github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.3
 github.com/spf13/pflag
-# golang.org/x/crypto v0.0.0-20181030102418-4d3f4d9ffa16
+# golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
 golang.org/x/crypto/ssh/terminal
-# golang.org/x/net v0.0.0-20181029044818-c44066c5c816
+# golang.org/x/net v0.0.0-20190620200207-3b0461eec859
 golang.org/x/net/http2
 golang.org/x/net/context
 golang.org/x/net/http/httpguts
@@ -94,17 +94,17 @@ golang.org/x/net/idna
 golang.org/x/net/html/charset
 golang.org/x/net/html
 golang.org/x/net/html/atom
-# golang.org/x/sys v0.0.0-20181030150119-7e31e0c00fa0
+# golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 # golang.org/x/text v0.3.0
 golang.org/x/text/secure/bidirule
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
-golang.org/x/text/transform
 golang.org/x/text/encoding
 golang.org/x/text/encoding/charmap
 golang.org/x/text/encoding/htmlindex
+golang.org/x/text/transform
 golang.org/x/text/encoding/internal/identifier
 golang.org/x/text/encoding/internal
 golang.org/x/text/encoding/japanese
@@ -163,12 +163,12 @@ k8s.io/apimachinery/pkg/util/wait
 k8s.io/apimachinery/pkg/runtime
 k8s.io/apimachinery/pkg/runtime/schema
 k8s.io/apimachinery/pkg/runtime/serializer
+k8s.io/apimachinery/pkg/util/runtime
 k8s.io/apimachinery/pkg/watch
 k8s.io/apimachinery/pkg/types
 k8s.io/apimachinery/pkg/labels
 k8s.io/apimachinery/pkg/api/errors
 k8s.io/apimachinery/pkg/api/equality
-k8s.io/apimachinery/pkg/util/runtime
 k8s.io/apimachinery/pkg/util/errors
 k8s.io/apimachinery/pkg/api/resource
 k8s.io/apimachinery/pkg/util/intstr
@@ -217,6 +217,8 @@ k8s.io/client-go/util/flowcontrol
 k8s.io/client-go/discovery/fake
 k8s.io/client-go/testing
 k8s.io/client-go/tools/cache
+k8s.io/client-go/informers/apps/v1beta1
+k8s.io/client-go/informers/core/v1
 k8s.io/client-go/listers/apps/v1beta1
 k8s.io/client-go/listers/core/v1
 k8s.io/client-go/listers/extensions/v1beta1
@@ -280,12 +282,10 @@ k8s.io/client-go/kubernetes/scheme
 k8s.io/client-go/util/integer
 k8s.io/client-go/tools/pager
 k8s.io/client-go/util/buffer
-k8s.io/client-go/informers/core/v1
 k8s.io/client-go/kubernetes/fake
 k8s.io/client-go/informers/admissionregistration/v1alpha1
 k8s.io/client-go/informers/admissionregistration/v1beta1
 k8s.io/client-go/informers/apps/v1
-k8s.io/client-go/informers/apps/v1beta1
 k8s.io/client-go/informers/apps/v1beta2
 k8s.io/client-go/informers/autoscaling/v1
 k8s.io/client-go/informers/autoscaling/v2beta1
@@ -359,7 +359,7 @@ k8s.io/client-go/listers/storage/v1alpha1
 k8s.io/client-go/listers/storage/v1beta1
 # k8s.io/kube-openapi v0.0.0-20181031203759-72693cb1fadd
 k8s.io/kube-openapi/pkg/util/proto
-# k8s.io/kubernetes v1.10.2
+# k8s.io/kubernetes v1.12.5
 k8s.io/kubernetes/pkg/util/flag
 k8s.io/kubernetes/pkg/kubelet/apis
 k8s.io/kubernetes/pkg/features

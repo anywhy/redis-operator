@@ -23,8 +23,8 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
-	// Redises returns a RedisInformer.
-	Redises() RedisInformer
+	// RedisClusters returns a RedisClusterInformer.
+	RedisClusters() RedisClusterInformer
 }
 
 type version struct {
@@ -38,7 +38,7 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
-// Redises returns a RedisInformer.
-func (v *version) Redises() RedisInformer {
-	return &redisInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+// RedisClusters returns a RedisClusterInformer.
+func (v *version) RedisClusters() RedisClusterInformer {
+	return &redisClusterInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
