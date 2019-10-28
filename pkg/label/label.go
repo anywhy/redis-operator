@@ -24,17 +24,21 @@ const (
 	NamespaceLabelKey string = "app.kubernetes.io/namespace"
 
 	// AnnPodNameKey is pod name annotation key used in PV/PVC for synchronizing redis cluster meta info
-	AnnPodNameKey string = "anywhy.github/pod-name"
+	AnnPodNameKey string = "anywhy.github.io/pod-name"
 	// ClusterGroupIDLabelKey is pod name annotation key used for redis cluster group synchronizing redis cluster meta info
-	ClusterGroupIDLabelKey string = "anywhy.github/cluster-group-id"
+	ClusterGroupIDLabelKey string = "anywhy.github.io/cluster-group-id"
 	// ClusterModeLabelKey is redis cluster mode
-	ClusterModeLabelKey string = "anywhy.github/cluster-mode"
+	ClusterModeLabelKey string = "anywhy.github.io/cluster-mode"
+	// ClusterNodeRoleLabelKey is redis node role
+	ClusterNodeRoleLabelKey string = "anywhy.github.io/node-role"
 
-	// MasterLabelKey redis master role label key
-	MasterLabelKey string = "master"
-	// SlaveLabelKey redis slave role label key
-	SlaveLabelKey string = "slave"
-	// SentinelLabelKey redis sentinel role label key
+	// MasterNodeLabelKey redis master role label key
+	MasterNodeLabelKey string = "master"
+	// SlaveNodeLabelKey redis slave role label key
+	SlaveNodeLabelKey string = "slave"
+	// RedisLabelKey redis component label key
+	RedisLabelKey string = "redis"
+	// SentinelLabelKey redis sentinel  component label key
 	SentinelLabelKey string = "sentinel"
 
 	// ReplicaClusterLabelKey means that redis cluster is master/slave
@@ -111,13 +115,19 @@ func (l Label) GetGroup() string {
 
 // Master label assigned redis master
 func (l Label) Master() Label {
-	l[ComponentLabelKey] = MasterLabelKey
+	l[ClusterNodeRoleLabelKey] = MasterNodeLabelKey
 	return l
 }
 
-// IsMaster label componet is master
+// IsMaster label role is master
 func (l Label) IsMaster() bool {
-	return l[ComponentLabelKey] == MasterLabelKey
+	return l[ClusterNodeRoleLabelKey] == MasterNodeLabelKey
+}
+
+// Redis label assigned redis sentinel
+func (l Label) Redis() Label {
+	l[ComponentLabelKey] = RedisLabelKey
+	return l
 }
 
 // Sentinel label assigned redis sentinel
@@ -133,13 +143,13 @@ func (l Label) IsSentinel() bool {
 
 // Slave label assigned redis slave
 func (l Label) Slave() Label {
-	l[ComponentLabelKey] = SlaveLabelKey
+	l[ClusterNodeRoleLabelKey] = SlaveNodeLabelKey
 	return l
 }
 
-// IsSlave label componet is slave
+// IsSlave label role is slave
 func (l Label) IsSlave() bool {
-	return l[ComponentLabelKey] == SlaveLabelKey
+	return l[ClusterNodeRoleLabelKey] == ClusterNodeRoleLabelKey
 }
 
 // ClusterListOptions returns a cluster ListOptions filter

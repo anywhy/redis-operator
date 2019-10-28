@@ -102,7 +102,7 @@ func (ru *replicaUpgrader) shoudUpgradePod(rc *v1alpha1.RedisCluster, pod *corev
 	revision, _ := pod.Labels[apps.ControllerRevisionHashLabelKey]
 	role := pod.GetLabels()[label.ComponentLabelKey]
 	if revision == rc.Status.Redis.StatefulSet.UpdateRevision ||
-		(upgraded != int(rc.Spec.Redis.Replicas)-1 && role == label.MasterLabelKey) {
+		(upgraded != int(rc.Spec.Redis.Replicas)-1 && role == label.MasterNodeLabelKey) {
 		return false, nil
 	}
 

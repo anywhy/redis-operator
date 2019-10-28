@@ -65,10 +65,10 @@ type RedisClusterList struct {
 // RedisClusterSpec redis cluster attributes
 type RedisClusterSpec struct {
 	// Mode choose from /replica/cluster
-	Mode ClusterMode `json:"mode"`
+	Mode          ClusterMode `json:"mode"`
+	SchedulerName string      `json:"schedulerName,omitempty"`
 
-	Redis ServerSpec `json:"redis"`
-
+	Redis    ServerSpec   `json:"redis"`
 	Sentinel SentinelSpec `json:"sentinel,omitempty"`
 
 	// Services list non-headless services type used in Redis
@@ -80,16 +80,12 @@ type RedisClusterSpec struct {
 type ServerSpec struct {
 	ContainerSpec
 
+	PodAttributesSpec
+
 	// The number of cluster members
 	Replicas int32 `json:"members"`
 
-	SchedulerName    string `json:"schedulerName,omitempty"`
 	StorageClassName string `json:"storageClassName,omitempty"`
-
-	NodeSelector         map[string]string `json:"nodeSelector,omitempty"`
-	NodeSelectorRequired bool              `json:"nodeSelectorRequired,omitempty"`
-
-	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
 	// The number of replicas for each master(redis cluster mode)
 	ReplicationFactor *int32 `json:"replicationFactor,omitempty"`
@@ -97,21 +93,17 @@ type ServerSpec struct {
 
 // SentinelSpec redis sentinel attributes
 type SentinelSpec struct {
+	PodAttributesSpec
+
 	Enable     bool   `json:"enable,omitempty"`
 	Replicas   int32  `json:"replicas,omitempty"`
 	MasterName string `json:"masterName,omitempty"`
 	Password   string `json:"password,omitempty"`
 
+	StorageClassName string `json:"storageClassName,omitempty"`
+
 	Requests *ResourceRequirement `json:"requests,omitempty"`
 	Limits   *ResourceRequirement `json:"limits,omitempty"`
-
-	StorageClassName string `json:"storageClassName,omitempty"`
-	SchedulerName    string `json:"schedulerName,omitempty"`
-
-	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
-
-	NodeSelector         map[string]string `json:"nodeSelector,omitempty"`
-	NodeSelectorRequired bool              `json:"nodeSelectorRequired,omitempty"`
 }
 
 // RedisClusterStatus represents the current status of a redis cluster.
@@ -154,12 +146,30 @@ type RedisMember struct {
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 }
 
+// PodAttributesSpec is a spec of some general attributes of Server, Sentinel Pods
+type PodAttributesSpec struct {
+	Affinity           *corev1.Affinity           `json:"affinity,omitempty"`
+	NodeSelector       map[string]string          `json:"nodeSelector,omitempty"`
+	Tolerations        []corev1.Toleration        `json:"tolerations,omitempty"`
+	Annotations        map[string]string          `json:"annotations,omitempty"`
+	HostNetwork        bool                       `json:"hostNetwork,omitempty"`
+	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
+	PriorityClassName  string                     `json:"priorityClassName,omitempty"`
+}
+
 // ServerStatus is cluster status
 type ServerStatus struct {
-	Phase       MemberPhase             `json:"phase,omitempty"`
-	StatefulSet *apps.StatefulSetStatus `json:"statefulset,omitempty"`
-	Members     map[string]RedisMember  `json:"members,omitempty"`
-	Masters     []RedisMember           `json:"masters,omitempty"`
+	Phase          MemberPhase                   `json:"phase,omitempty"`
+	StatefulSet    *apps.StatefulSetStatus       `json:"statefulset,omitempty"`
+	Members        map[string]RedisMember        `json:"members,omitempty"`
+	FailureMembers map[string]RedisFailureMember `json:"failureMembers,omitempty"`
+	Masters        []RedisMember                 `json:"masters,omitempty"`
+}
+
+// RedisFailureMember is the redis cluster failure member information
+type RedisFailureMember struct {
+	PodName   string      `json:"podName,omitempty"`
+	CreatedAt metav1.Time `json:"createdAt,omitempty"`
 }
 
 // SentinelStatus is redis sentinel status

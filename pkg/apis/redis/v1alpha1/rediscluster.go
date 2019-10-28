@@ -19,3 +19,8 @@ func (rc *RedisCluster) SentinelIsOk() bool {
 func (rc *RedisCluster) IsEnableSentinel() bool {
 	return rc.Spec.Sentinel.Enable
 }
+
+// RedisRealReplicas redis real replicas
+func (rc *RedisCluster) RedisRealReplicas() int32 {
+	return rc.Spec.Redis.Replicas + int32(len(rc.Status.Redis.FailureMembers))
+}

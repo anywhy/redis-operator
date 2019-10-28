@@ -22,3 +22,24 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- $wtf := $context.Template.Name | replace $last $name -}}
 {{ include $wtf $context }}
 {{- end -}}
+
+{{/*
+Encapsulate server configmap data for consistent digest calculation
+*/}}
+{{- define "server-configmap.data" -}}
+startup-script: |-
+{{ tuple "scripts/_start_server.sh.tpl" . | include "helm-toolkit.utils.template" | indent 2 }}
+config-file: |-
+    {{- if .Values.redis.config }}
+{{ .Values.redis.config | indent 2 }}
+    {{- end -}}
+{{- if ((.Values.redis.mode) and (eq .Values.redis.mode "replica")) }}
+sentinel-startup-script: |-
+{{ tuple "scripts/_start_sentinel.sh.tpl" . | include "helm-toolkit.utils.template" | indent 2 }}
+sentinel-config-file: |-
+    {{- if .Values.sentinel.config }}
+{{ .Values.sentinel.config | indent 4 }}
+    {{- else }}
+{{ tuple "config/_redis-sentinel-config.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+    {{- end -}}
+{{- end -}}

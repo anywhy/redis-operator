@@ -79,17 +79,17 @@ func (rmm *replicaMemberManager) Sync(rc *v1alpha1.RedisCluster) error {
 	return rmm.syncReplicaStatefulSetForRedis(rc)
 }
 
+// sync service
 func (rmm *replicaMemberManager) syncReplicaServiceForRedis(rc *v1alpha1.RedisCluster) error {
-	svcList := []ServiceConfig{
-		{
-			Name:     "redis-master",
-			Port:     6379,
-			SvcLabel: func(l label.Label) label.Label { return l.Master() },
-			MemberName: func(clusterName string) string {
-				return fmt.Sprintf("%s-master", controller.RedisMemberName(clusterName))
-			},
-			Headless: false,
+	svcList := []ServiceConfig{{
+		Name:     "redis-master",
+		Port:     6379,
+		SvcLabel: func(l label.Label) label.Label { return l.Master() },
+		MemberName: func(clusterName string) string {
+			return fmt.Sprintf("%s-master", controller.RedisMemberName(clusterName))
 		},
+		Headless: false,
+	},
 		{
 			Name:     "redis-master-peer",
 			Port:     6379,
@@ -102,16 +102,15 @@ func (rmm *replicaMemberManager) syncReplicaServiceForRedis(rc *v1alpha1.RedisCl
 	}
 
 	if rc.Spec.Mode == v1alpha1.Replica && rc.Spec.Redis.Replicas > 1 {
-		slaveSvcList := []ServiceConfig{
-			{
-				Name:     "redis-salve",
-				Port:     6379,
-				SvcLabel: func(l label.Label) label.Label { return l.Slave() },
-				MemberName: func(clusterName string) string {
-					return fmt.Sprintf("%s-slave", controller.RedisMemberName(clusterName))
-				},
-				Headless: false,
+		slaveSvcList := []ServiceConfig{{
+			Name:     "redis-salve",
+			Port:     6379,
+			SvcLabel: func(l label.Label) label.Label { return l.Slave() },
+			MemberName: func(clusterName string) string {
+				return fmt.Sprintf("%s-slave", controller.RedisMemberName(clusterName))
 			},
+			Headless: false,
+		},
 			{
 				Name:     "redis-salve-peer",
 				Port:     6379,
@@ -125,8 +124,34 @@ func (rmm *replicaMemberManager) syncReplicaServiceForRedis(rc *v1alpha1.RedisCl
 		svcList = append(svcList, slaveSvcList...)
 	}
 
-	for _, svc := range svcList {
-		if err := rmm.syncReplicaService(rc, svc); err != nil {
+	// create service
+	ns, rcName := rc.GetNamespace(), rc.GetName()
+	for _, svcConfig := range svcList {
+		newSvc := rmm.getNewRedisServiceForRedis(rc, svcConfig)
+		oldSvcTmp, err := rmm.svcLister.Services(ns).Get(svcConfig.MemberName(rcName))
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				err := setServiceLastAppliedConfigAnnotation(newSvc)
+				if err != nil {
+					return err
+				}
+				return rmm.svcControl.CreateService(rc, newSvc)
+			}
+			return err
+		}
+
+		oldSvc := oldSvcTmp.DeepCopy()
+		if ok, err := serviceEqual(newSvc, oldSvc); err != nil {
+			return err
+		} else if !ok {
+			svc := *oldSvc
+			svc.Spec = newSvc.Spec
+			svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
+			if err = setServiceLastAppliedConfigAnnotation(&svc); err != nil {
+				return err
+			}
+
+			_, err := rmm.svcControl.UpdateService(rc, &svc)
 			return err
 		}
 	}
@@ -153,20 +178,20 @@ func (rmm *replicaMemberManager) syncReplicaStatefulSetForRedis(rc *v1alpha1.Red
 			return err
 		}
 		rc.Status.Redis.StatefulSet = &apps.StatefulSetStatus{}
-		return controller.RequeueErrorf("Redis: [%s/%s], waiting for replica instances running", ns, rcName)
+		return nil
 	}
 
 	// sync status
 	if err := rmm.syncReplicaStatefulSetStatus(rc, oldSet); err != nil {
 		glog.Errorf("failed to sync Redis: [%s/%s]'s status, error: %v", ns, rcName, err)
-	}
-
-	// init cluster master
-	if _, err := rmm.initReplicaMaster(rc); err != nil {
 		return err
 	}
 
-	// TODO update
+	// init cluster master
+	if _, err := rmm.initReplicaMasterNode(rc); err != nil {
+		return err
+	}
+
 	if !templateEqual(newSet.Spec.Template, oldSet.Spec.Template) || rc.Status.Redis.Phase == v1alpha1.UpgradePhase {
 		if err := rmm.replicaUpgrader.Upgrade(rc, oldSet, newSet); err != nil {
 			return err
@@ -212,7 +237,7 @@ func (rmm *replicaMemberManager) syncReplicaStatefulSetForRedis(rc *v1alpha1.Red
 }
 
 // init redis master
-func (rmm *replicaMemberManager) initReplicaMaster(rc *v1alpha1.RedisCluster) (*corev1.Pod, error) {
+func (rmm *replicaMemberManager) initReplicaMasterNode(rc *v1alpha1.RedisCluster) (*corev1.Pod, error) {
 	ns, rcName := rc.GetNamespace(), rc.GetName()
 
 	masterPodName := ordinalPodName(v1alpha1.RedisMemberType, rcName, 0)
@@ -227,48 +252,15 @@ func (rmm *replicaMemberManager) initReplicaMaster(rc *v1alpha1.RedisCluster) (*
 
 	if masterPod != nil {
 		masterPodCopy := masterPod.DeepCopy()
-		componentLabelKey := masterPodCopy.Labels[label.ComponentLabelKey]
-		if componentLabelKey != "" && componentLabelKey != label.MasterLabelKey {
+		nodeRoleLabelKey := masterPodCopy.Labels[label.ClusterNodeRoleLabelKey]
+		if nodeRoleLabelKey != "" && nodeRoleLabelKey == label.MasterNodeLabelKey {
 			return masterPod, nil
 		}
-		masterPodCopy.Labels[label.ComponentLabelKey] = label.MasterLabelKey
+		masterPodCopy.Labels[label.ComponentLabelKey] = label.MasterNodeLabelKey
 		rc.Status.Redis.Masters[0].Name = masterPodCopy.Name
 		return rmm.podControl.UpdatePod(rc, masterPodCopy)
 	}
 	return masterPod, nil
-}
-
-func (rmm *replicaMemberManager) syncReplicaService(rc *v1alpha1.RedisCluster, svcConfig ServiceConfig) error {
-	ns, rcName := rc.GetNamespace(), rc.GetName()
-
-	newSvc := rmm.getNewRedisServiceForRedis(rc, svcConfig)
-	oldSvc, err := rmm.svcLister.Services(ns).Get(svcConfig.MemberName(rcName))
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			err := setServiceLastAppliedConfigAnnotation(newSvc)
-			if err != nil {
-				return err
-			}
-			return rmm.svcControl.CreateService(rc, newSvc)
-		}
-		return err
-	}
-
-	if ok, err := serviceEqual(newSvc, oldSvc); err != nil {
-		return err
-	} else if !ok {
-		svc := *oldSvc
-		svc.Spec = newSvc.Spec
-		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-		if err = setServiceLastAppliedConfigAnnotation(&svc); err != nil {
-			return err
-		}
-
-		_, err := rmm.svcControl.UpdateService(rc, &svc)
-		return err
-	}
-
-	return nil
 }
 
 func (rmm *replicaMemberManager) getNewRedisServiceForRedis(rc *v1alpha1.RedisCluster, svcConfig ServiceConfig) *corev1.Service {
@@ -348,41 +340,6 @@ func (rmm *replicaMemberManager) replicaIsUpgrading(set *apps.StatefulSet, rc *v
 	return false, nil
 }
 
-// redis start commond
-const serverCmd = `
-set -uo pipefail
-ROLE="master"
-
-elapseTime=0
-period=1
-threshold=30
-while true; do
-    sleep ${period}
-    elapseTime=$(( elapseTime+period ))
-
-    if [[ ${elapseTime} -ge ${threshold} ]]
-    then
-		echo "waiting for redis master role timeout, start as master node" >&2
-		break
-	fi
-
-	if [[ -s /etc/podinfo/redisrole ]]; then
-		ROLE=$(cat /etc/podinfo/redisrole)
-	fi
-	
-done
-
-ARGS=/etc/redis/redis.conf
-
-if [[ X${ROLE} != Xmaster ]]; then
-	ARGS="${ARGS} --slaveof ${PEER_MASTER_SERVICE_NAME}.${NAMESPACE}.svc 6379"
-fi
-
-echo "starting redis-server ..."
-echo "redis-server ${ARGS}"
-exec redis-server ${ARGS} 
-`
-
 func (rmm *replicaMemberManager) getNewReplicaStatefulSet(rc *v1alpha1.RedisCluster) (*apps.StatefulSet, error) {
 	ns, rcName := rc.GetNamespace(), rc.GetName()
 	redisConfigMap := controller.RedisMemberName(rcName)
@@ -390,13 +347,13 @@ func (rmm *replicaMemberManager) getNewReplicaStatefulSet(rc *v1alpha1.RedisClus
 	podMount, podVolume := podinfoVolume()
 	volMounts := []corev1.VolumeMount{
 		podMount,
+		{Name: "config", ReadOnly: true, MountPath: "/etc/redis"},
+		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
 		{Name: v1alpha1.RedisMemberType.String(), MountPath: "/data"},
-		{Name: "configmap", MountPath: "/configmap"},
-		{Name: "redisconfig", MountPath: "/etc/redis"},
 	}
 	vols := []corev1.Volume{
 		podVolume,
-		{Name: "configmap",
+		{Name: "config",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -406,10 +363,14 @@ func (rmm *replicaMemberManager) getNewReplicaStatefulSet(rc *v1alpha1.RedisClus
 				},
 			},
 		},
-		{
-			Name: "redisconfig",
+		{Name: "startup-script",
 			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: redisConfigMap,
+					},
+					Items: []corev1.KeyToPath{{Key: "startup-script", Path: "server_start_script.sh"}},
+				},
 			},
 		},
 	}
@@ -426,6 +387,11 @@ func (rmm *replicaMemberManager) getNewReplicaStatefulSet(rc *v1alpha1.RedisClus
 	pvc, err := rmm.volumeClaimTemplate(rc, &storageClassName)
 	if err != nil {
 		return nil, err
+	}
+
+	dnsPolicy := corev1.DNSClusterFirst // same as k8s defaults
+	if rc.Spec.Redis.HostNetwork {
+		dnsPolicy = corev1.DNSClusterFirstWithHostNet
 	}
 
 	rediSet := &apps.StatefulSet{
@@ -446,28 +412,17 @@ func (rmm *replicaMemberManager) getNewReplicaStatefulSet(rc *v1alpha1.RedisClus
 					Annotations: controller.AnnProm(2379),
 				},
 				Spec: corev1.PodSpec{
-					Affinity: util.AffinityForNodeSelector(ns,
-						rc.Spec.Redis.NodeSelectorRequired,
-						rediLabel.Labels(),
-						rc.Spec.Redis.NodeSelector),
-					InitContainers: []corev1.Container{
-						{
-							Name:  "copy-config",
-							Image: "busybox:latest",
-							Command: []string{
-								"sh", "-c", "cp /configmap/* /etc/redis",
-							},
-							VolumeMounts: volMounts,
-						},
-					},
+					SchedulerName: rc.Spec.SchedulerName,
+					Affinity:      rc.Spec.Redis.Affinity,
+					NodeSelector:  rc.Spec.Redis.NodeSelector,
+					HostNetwork:   rc.Spec.Redis.HostNetwork,
+					DNSPolicy:     dnsPolicy,
 					Containers: []corev1.Container{
 						{
 							Name:            "redis",
 							Image:           rc.Spec.Redis.Image,
 							ImagePullPolicy: rc.Spec.Redis.ImagePullPolicy,
-							Command: []string{
-								"bash", "-c", serverCmd,
-							},
+							Command:         []string{"/bin/sh", "/usr/local/bin/server_start_script.sh"},
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          "redis",
@@ -506,6 +461,12 @@ func (rmm *replicaMemberManager) getNewReplicaStatefulSet(rc *v1alpha1.RedisClus
 			PodManagementPolicy: apps.ParallelPodManagement,
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 				pvc,
+			},
+			UpdateStrategy: apps.StatefulSetUpdateStrategy{
+				Type: apps.RollingUpdateStatefulSetStrategyType,
+				RollingUpdate: &apps.RollingUpdateStatefulSetStrategy{
+					Partition: controller.Int32Ptr(rc.RedisRealReplicas()),
+				},
 			},
 		},
 	}

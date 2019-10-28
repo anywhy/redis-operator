@@ -23,15 +23,17 @@ require (
 	github.com/spf13/cobra v0.0.3
 	github.com/spf13/pflag v1.0.3
 	github.com/stretchr/testify v1.2.2 // indirect
-	golang.org/x/net v0.0.0-20190620200207-3b0461eec859 // indirect
-	golang.org/x/sync v0.0.0-20190423024810-112230192c58 // indirect
 	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2 // indirect
+	golang.org/x/tools v0.0.0-20191026034945-b2104f82a97d // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/api v0.0.0-20180308224125-73d903622b73
 	k8s.io/apiextensions-apiserver v0.0.0-20181110192823-2c43ee60e25b // indirect
 	k8s.io/apimachinery v0.0.0-20180228050457-302974c03f7e
 	k8s.io/apiserver v0.0.0-20181103082535-b4fba3b8a3fc
 	k8s.io/client-go v0.0.0-20180424211516-33f2870a2b83
+	k8s.io/code-generator v0.0.0-20181128191024-b1289fc74931 // indirect
+	k8s.io/gengo v0.0.0-20191010091904-7fa3014cb28f // indirect
+	k8s.io/klog v1.0.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20181031203759-72693cb1fadd // indirect
 	k8s.io/kubernetes v1.12.5
 )

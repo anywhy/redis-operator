@@ -75,7 +75,7 @@ func (rpc *realPodControl) UpdatePod(rc *v1alpha1.RedisCluster, pod *corev1.Pod)
 	// if replica cluster set component slave role
 	if rc.Spec.Mode == v1alpha1.Cluster {
 		if _, ok := labels[label.ComponentLabelKey]; !ok {
-			labels[label.ComponentLabelKey] = label.SlaveLabelKey
+			labels[label.ComponentLabelKey] = label.SlaveNodeLabelKey
 		}
 	}
 
@@ -139,7 +139,7 @@ var (
 	// TestName name label
 	TestName = "redis-cluster"
 	// TestComponentName component label for instance
-	TestComponentName = "master"
+	TestComponentName = "redis"
 	// TestClusterModeName component label cluster mode
 	TestClusterModeName = "replica"
 	// TestManagedByName controller by redis
@@ -148,6 +148,8 @@ var (
 	TestClusterName = "test"
 	// TestPodName cluster pod name
 	TestPodName = "test-pod"
+	// TestNodeRoleName cluster node role
+	TestNodeRoleName = "master"
 )
 
 // FakePodControl is a fake PodControlInterface
@@ -228,6 +230,7 @@ func (fpc *FakePodControl) UpdatePod(_ *v1alpha1.RedisCluster, pod *corev1.Pod) 
 	setIfNotEmpty(pod.Labels, label.ManagedByLabelKey, TestManagedByName)
 	setIfNotEmpty(pod.Labels, label.InstanceLabelKey, TestClusterName)
 	setIfNotEmpty(pod.Labels, label.ClusterModeLabelKey, TestClusterModeName)
+	setIfNotEmpty(pod.Labels, label.ClusterNodeRoleLabelKey, TestNodeRoleName)
 
 	return pod, fpc.PodIndexer.Update(pod)
 }

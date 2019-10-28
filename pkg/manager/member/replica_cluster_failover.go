@@ -45,18 +45,18 @@ func (rf *replicaFailover) Failover(rc *v1alpha1.RedisCluster) {
 
 		for _, pod := range pods {
 			addr := net.JoinHostPort(pod.Status.PodIP, "6379")
-			if strings.EqualFold(master, addr) && pod.Labels[label.ComponentLabelKey] != label.MasterLabelKey {
+			if strings.EqualFold(master, addr) && pod.Labels[label.ClusterNodeRoleLabelKey] != label.MasterNodeLabelKey {
 				podCopy := pod.DeepCopy()
-				podCopy.Labels[label.ComponentLabelKey] = label.MasterLabelKey
+				podCopy.Labels[label.ClusterNodeRoleLabelKey] = label.MasterNodeLabelKey
 				if _, err := rf.podControl.UpdatePod(rc, podCopy); err != nil {
 					glog.Errorf("Replica cluster HA switch master error: %#v", err)
 					return err
 				}
 				glog.Infof("Replica cluster HA switch: %v to master", podCopy.Name)
 				rc.Status.Redis.Masters[0].Name = pod.GetName()
-			} else if !strings.EqualFold(master, addr) && pod.Labels[label.ComponentLabelKey] == label.MasterLabelKey {
+			} else if !strings.EqualFold(master, addr) && pod.Labels[label.ClusterNodeRoleLabelKey] == label.MasterNodeLabelKey {
 				podCopy := pod.DeepCopy()
-				podCopy.Labels[label.ComponentLabelKey] = label.SlaveLabelKey
+				podCopy.Labels[label.ClusterNodeRoleLabelKey] = label.SlaveNodeLabelKey
 				if _, err := rf.podControl.UpdatePod(rc, podCopy); err != nil {
 					glog.Errorf("Replica cluster HA switch master error: %#v", err)
 					return err

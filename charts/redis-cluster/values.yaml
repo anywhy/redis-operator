@@ -28,7 +28,7 @@ services:
 
 redis:
   mode: replica
-  members: 2
+  replicas: 2
   image: redis:latest
   logLevel: info
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.

@@ -112,6 +112,11 @@ func RedisMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-redis", clusterName)
 }
 
+// Int32Ptr returns a pointer to an int32
+func Int32Ptr(i int32) *int32 {
+	return &i
+}
+
 // requestTracker is used by unit test for mocking request error
 type requestTracker struct {
 	requests int
