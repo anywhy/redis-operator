@@ -457,7 +457,6 @@ func (rmm *replicaMemberManager) getNewReplicaStatefulSet(rc *v1alpha1.RedisClus
 					Tolerations:   rc.Spec.Redis.Tolerations,
 				},
 			},
-			ServiceName:         controller.RedisPeerMemberName(rcName),
 			PodManagementPolicy: apps.ParallelPodManagement,
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 				pvc,
