@@ -82,13 +82,13 @@ func (l Label) ClusterMode(mode string) Label {
 	return l
 }
 
-// Replica replica cluster
-func (l Label) Replica() Label {
+// ReplicaMode replica cluster
+func (l Label) ReplicaMode() Label {
 	return l.ClusterMode(ReplicaClusterLabelKey)
 }
 
-// RedisCluster redis cluster
-func (l Label) RedisCluster() Label {
+// RedisClusterMode redis cluster
+func (l Label) RedisClusterMode() Label {
 	return l.ClusterMode(RedisClusterLabelKey)
 }
 

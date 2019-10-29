@@ -76,7 +76,7 @@ func (ru *replicaUpgrader) upgradeReplicaPod(rc *v1alpha1.RedisCluster, ordinal 
 func (ru *replicaUpgrader) shoudUpgradePod(rc *v1alpha1.RedisCluster, pod *corev1.Pod) (bool, error) {
 	ns, rcName := rc.GetNamespace(), rc.GetName()
 	instanceName := rc.GetLabels()[label.InstanceLabelKey]
-	l, err := label.New().Instance(instanceName).Replica().Slave().Selector()
+	l, err := label.New().Instance(instanceName).Redis().ReplicaMode().Slave().Selector()
 	if err != nil {
 		return false, controller.RequeueErrorf(err.Error())
 	}

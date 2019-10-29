@@ -43,7 +43,7 @@ func TestLabelReplica(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	l := New()
-	l.Replica()
+	l.ReplicaMode()
 	g.Expect(l.ClusterModeType()).To(Equal(ReplicaClusterLabelKey))
 }
 
@@ -51,7 +51,7 @@ func TestLabelRedisCluster(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	l := New()
-	l.RedisCluster()
+	l.RedisClusterMode()
 	g.Expect(l.ClusterModeType()).To(Equal(RedisClusterLabelKey))
 }
 
@@ -86,7 +86,8 @@ func TestLabelSelector(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	l := New()
-	l.Replica()
+	l.Redis()
+	l.ReplicaMode()
 	l.Master()
 	l.Instance("demo")
 	l.Namespace("ns-1")
@@ -94,7 +95,7 @@ func TestLabelSelector(t *testing.T) {
 	st := labels.Set(map[string]string{
 		NameLabelKey:        "redis-cluster",
 		ManagedByLabelKey:   "redis-operator",
-		ComponentLabelKey:   "master",
+		ComponentLabelKey:   "redis",
 		InstanceLabelKey:    "demo",
 		NamespaceLabelKey:   "ns-1",
 		ClusterModeLabelKey: "replica",

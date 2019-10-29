@@ -31,7 +31,7 @@ func (rf *replicaFailover) Failover(rc *v1alpha1.RedisCluster) {
 	}
 	rf.haControl.Watch(rc, func(master string) error {
 		instanceName := rc.GetLabels()[label.InstanceLabelKey]
-		selector, err := label.New().Instance(instanceName).Replica().Selector()
+		selector, err := label.New().Instance(instanceName).Redis().ReplicaMode().Selector()
 		if err != nil {
 			glog.Errorf("Replica cluster HA switch master error: %#v", err)
 			return err
