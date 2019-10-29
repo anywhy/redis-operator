@@ -34,8 +34,6 @@ config-file: |-
 {{ .Values.redis.config | indent 2 }}
     {{- end -}}
 {{- if ((.Values.redis.mode) and (eq .Values.redis.mode "replica")) }}
-sentinel-startup-script: |-
-{{ tuple "scripts/_start_sentinel.sh.tpl" . | include "helm-toolkit.utils.template" | indent 2 }}
 sentinel-config-file: |-
     {{- if .Values.sentinel.config }}
 {{ .Values.sentinel.config | indent 4 }}
