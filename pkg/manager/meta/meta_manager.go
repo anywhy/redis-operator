@@ -66,8 +66,8 @@ func (mm *metaManager) syncReplicaCluster(rc *v1alpha1.RedisCluster) error {
 		if err != nil {
 			return err
 		}
-		if updatePod.Labels[label.ComponentLabelKey] != label.MasterLabelKey &&
-			updatePod.Labels[label.ComponentLabelKey] != label.SlaveLabelKey {
+		if updatePod.Labels[label.ClusterNodeRoleLabelKey] != label.MasterNodeLabelKey &&
+			updatePod.Labels[label.ClusterNodeRoleLabelKey] != label.SlaveNodeLabelKey {
 			continue
 		}
 		// update meta info for pvc
