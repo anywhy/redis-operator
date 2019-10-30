@@ -23,9 +23,9 @@ import (
 
 // ServiceControlInterface manages Services used in Redis
 type ServiceControlInterface interface {
-	CreateService(*v1alpha1.Redis, *corev1.Service) error
-	UpdateService(*v1alpha1.Redis, *corev1.Service) (*corev1.Service, error)
-	DeleteService(*v1alpha1.Redis, *corev1.Service) error
+	CreateService(*v1alpha1.RedisCluster, *corev1.Service) error
+	UpdateService(*v1alpha1.RedisCluster, *corev1.Service) (*corev1.Service, error)
+	DeleteService(*v1alpha1.RedisCluster, *corev1.Service) error
 }
 
 type realServiceControl struct {
@@ -45,7 +45,7 @@ func NewRealServiceControl(kubeCli kubernetes.Interface, svcLister corelisters.S
 }
 
 // CreateService create a Service in a Redis.
-func (sc *realServiceControl) CreateService(rc *v1alpha1.Redis, svc *corev1.Service) error {
+func (sc *realServiceControl) CreateService(rc *v1alpha1.RedisCluster, svc *corev1.Service) error {
 	_, err := sc.kubeCli.CoreV1().Services(rc.Namespace).Create(svc)
 	if apierrors.IsAlreadyExists(err) {
 		if !metav1.IsControlledBy(svc, rc) {
@@ -59,7 +59,7 @@ func (sc *realServiceControl) CreateService(rc *v1alpha1.Redis, svc *corev1.Serv
 }
 
 // UpdateService update a Service in a Redis.
-func (sc *realServiceControl) UpdateService(rc *v1alpha1.Redis, svc *corev1.Service) (*corev1.Service, error) {
+func (sc *realServiceControl) UpdateService(rc *v1alpha1.RedisCluster, svc *corev1.Service) (*corev1.Service, error) {
 	ns := rc.GetNamespace()
 	rcName := rc.GetName()
 	svcName := svc.GetName()
@@ -88,7 +88,7 @@ func (sc *realServiceControl) UpdateService(rc *v1alpha1.Redis, svc *corev1.Serv
 }
 
 // DeleteService delete a Service in a Redis.
-func (sc *realServiceControl) DeleteService(rc *v1alpha1.Redis, svc *corev1.Service) error {
+func (sc *realServiceControl) DeleteService(rc *v1alpha1.RedisCluster, svc *corev1.Service) error {
 	err := sc.kubeCli.CoreV1().Services(rc.Namespace).Delete(svc.Name, nil)
 	sc.recordServiceEvent("delete", rc, svc, err)
 	return err
@@ -96,7 +96,7 @@ func (sc *realServiceControl) DeleteService(rc *v1alpha1.Redis, svc *corev1.Serv
 
 // recordServiceEvent records an event for verb applied to a service in a Redis. If err is nil the generated event will
 // have a reason of v1.EventTypeNormal. If err is not nil the generated event will have a reason of v1.EventTypeWarning.
-func (sc *realServiceControl) recordServiceEvent(verb string, rc *v1alpha1.Redis, svc *corev1.Service, err error) {
+func (sc *realServiceControl) recordServiceEvent(verb string, rc *v1alpha1.RedisCluster, svc *corev1.Service, err error) {
 	rcName := rc.Name
 	svcName := svc.Name
 	if err == nil {
@@ -118,7 +118,7 @@ var _ ServiceControlInterface = &realServiceControl{}
 type FakeServiceControl struct {
 	SvcLister                corelisters.ServiceLister
 	SvcIndexer               cache.Indexer
-	RcLister                 v1listers.RedisLister
+	RcLister                 v1listers.RedisClusterLister
 	rcIndexer                cache.Indexer
 	createServiceTracker     requestTracker
 	updateServiceTracker     requestTracker
@@ -126,7 +126,7 @@ type FakeServiceControl struct {
 }
 
 // NewFakeServiceControl returns a FakeServiceControl
-func NewFakeServiceControl(svcInformer coreinformers.ServiceInformer, rcInformer rcinformers.RedisInformer) *FakeServiceControl {
+func NewFakeServiceControl(svcInformer coreinformers.ServiceInformer, rcInformer rcinformers.RedisClusterInformer) *FakeServiceControl {
 	return &FakeServiceControl{
 		svcInformer.Lister(),
 		svcInformer.Informer().GetIndexer(),
@@ -157,7 +157,7 @@ func (ssc *FakeServiceControl) SetDeleteServiceError(err error, after int) {
 }
 
 // CreateService adds the service to SvcIndexer
-func (ssc *FakeServiceControl) CreateService(_ *v1alpha1.Redis, svc *corev1.Service) error {
+func (ssc *FakeServiceControl) CreateService(_ *v1alpha1.RedisCluster, svc *corev1.Service) error {
 	defer ssc.createServiceTracker.inc()
 	if ssc.createServiceTracker.errorReady() {
 		defer ssc.createServiceTracker.reset()
@@ -168,7 +168,7 @@ func (ssc *FakeServiceControl) CreateService(_ *v1alpha1.Redis, svc *corev1.Serv
 }
 
 // UpdateService updates the service of SvcIndexer
-func (ssc *FakeServiceControl) UpdateService(_ *v1alpha1.Redis, svc *corev1.Service) (*corev1.Service, error) {
+func (ssc *FakeServiceControl) UpdateService(_ *v1alpha1.RedisCluster, svc *corev1.Service) (*corev1.Service, error) {
 	defer ssc.updateServiceTracker.inc()
 	if ssc.updateServiceTracker.errorReady() {
 		defer ssc.updateServiceTracker.reset()
@@ -179,7 +179,7 @@ func (ssc *FakeServiceControl) UpdateService(_ *v1alpha1.Redis, svc *corev1.Serv
 }
 
 // DeleteService deletes the service of SvcIndexer
-func (ssc *FakeServiceControl) DeleteService(_ *v1alpha1.Redis, _ *corev1.Service) error {
+func (ssc *FakeServiceControl) DeleteService(_ *v1alpha1.RedisCluster, _ *corev1.Service) error {
 	return nil
 }
 

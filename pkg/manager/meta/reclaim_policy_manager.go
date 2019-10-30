@@ -26,7 +26,7 @@ func NewReclaimPolicyManager(pvcLister corelisters.PersistentVolumeClaimLister,
 	}
 }
 
-func (rpm *reclaimPolicyManager) Sync(rc *v1alpha1.Redis) error {
+func (rpm *reclaimPolicyManager) Sync(rc *v1alpha1.RedisCluster) error {
 	ns := rc.GetNamespace()
 	instanceName := rc.GetLabels()[label.InstanceLabelKey]
 
@@ -76,7 +76,7 @@ func (frpm *FakeReclaimPolicyManager) SetSyncError(err error) {
 }
 
 // Sync sync info
-func (frpm *FakeReclaimPolicyManager) Sync(_ *v1alpha1.Redis) error {
+func (frpm *FakeReclaimPolicyManager) Sync(_ *v1alpha1.RedisCluster) error {
 	if frpm.err != nil {
 		return frpm.err
 	}

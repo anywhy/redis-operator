@@ -27,7 +27,7 @@ func TestReplicaMemberManagerSyncCreate(t *testing.T) {
 
 	type testcase struct {
 		name                            string
-		prepare                         func(cluster *v1alpha1.Redis)
+		prepare                         func(cluster *v1alpha1.RedisCluster)
 		errWhenCreateStatefulSet        bool
 		errWhenCreateReplicaPeerService bool
 		err                             bool
@@ -49,7 +49,7 @@ func TestReplicaMemberManagerSyncCreate(t *testing.T) {
 			test.prepare(rc)
 		}
 
-		rc.Status.Replica.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 2}
+		rc.Status.Redis.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 2}
 		rmm, fakeSetControl, fakeSvcControl, _, _ := newFakeReplicaMemberManager()
 		if test.errWhenCreateStatefulSet {
 			fakeSetControl.SetCreateStatefulSetError(errors.NewInternalError(fmt.Errorf("API server failed")), 0)
@@ -152,7 +152,7 @@ func TestReplicaMemberManagerSyncCreate(t *testing.T) {
 
 		{
 			name: " storage format is wrong",
-			prepare: func(tc *v1alpha1.Redis) {
+			prepare: func(tc *v1alpha1.RedisCluster) {
 				tc.Spec.Redis.Requests.Storage = "10xxxxi"
 			},
 			errWhenCreateStatefulSet: false,
@@ -184,7 +184,7 @@ func newFakeReplicaMemberManager() (*replicaMemberManager, *controller.FakeState
 
 	recorder := record.NewFakeRecorder(10)
 
-	rcInformer := informerFactory.Anywhy().V1alpha1().Redises()
+	rcInformer := informerFactory.Anywhy().V1alpha1().RedisClusters()
 	setInformer := kubeInformerFactory.Apps().V1beta1().StatefulSets()
 	svcInformer := kubeInformerFactory.Core().V1().Services()
 	pvcInformer := kubeInformerFactory.Core().V1().PersistentVolumeClaims()
@@ -216,8 +216,8 @@ func newFakeReplicaMemberManager() (*replicaMemberManager, *controller.FakeState
 
 }
 
-func newRedisForReplica() *v1alpha1.Redis {
-	return &v1alpha1.Redis{
+func newRedisForReplica() *v1alpha1.RedisCluster {
+	return &v1alpha1.RedisCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Redis",
 			APIVersion: "anywhy.github.io/v1alpha1",
@@ -227,9 +227,9 @@ func newRedisForReplica() *v1alpha1.Redis {
 			Namespace: corev1.NamespaceDefault,
 			UID:       types.UID("test"),
 		},
-		Spec: v1alpha1.RedisSpec{
+		Spec: v1alpha1.RedisClusterSpec{
 			Mode: "replica",
-			Redis: v1alpha1.RedisInstanceSpec{
+			Redis: v1alpha1.ServerSpec{
 				ContainerSpec: v1alpha1.ContainerSpec{
 					Image: "test-image",
 					Requests: &v1alpha1.ResourceRequirement{
@@ -238,7 +238,7 @@ func newRedisForReplica() *v1alpha1.Redis {
 						Storage: "1Gi",
 					},
 				},
-				Members:          2,
+				Replicas:         2,
 				StorageClassName: "my-storage-class",
 			},
 		},

@@ -25,11 +25,11 @@ import (
 // StatefulSetControlInterface defines the interface that uses to create, update, and delete StatefulSets,
 type StatefulSetControlInterface interface {
 	// CreateStatefulSet creates a StatefulSet in a Redis.
-	CreateStatefulSet(*v1alpha1.Redis, *apps.StatefulSet) error
+	CreateStatefulSet(*v1alpha1.RedisCluster, *apps.StatefulSet) error
 	// UpdateStatefulSet updates a StatefulSet in a Redis.
-	UpdateStatefulSet(*v1alpha1.Redis, *apps.StatefulSet) (*apps.StatefulSet, error)
+	UpdateStatefulSet(*v1alpha1.RedisCluster, *apps.StatefulSet) (*apps.StatefulSet, error)
 	// DeleteStatefulSet deletes a StatefulSet in a Redis.
-	DeleteStatefulSet(*v1alpha1.Redis, *apps.StatefulSet) error
+	DeleteStatefulSet(*v1alpha1.RedisCluster, *apps.StatefulSet) error
 }
 
 type realStatefulSetControl struct {
@@ -45,7 +45,7 @@ func NewRealStatefuSetControl(kubeCli kubernetes.Interface, setLister appslister
 }
 
 // CreateStatefulSet create a StatefulSet in a Redis.
-func (sc *realStatefulSetControl) CreateStatefulSet(rc *v1alpha1.Redis, set *apps.StatefulSet) error {
+func (sc *realStatefulSetControl) CreateStatefulSet(rc *v1alpha1.RedisCluster, set *apps.StatefulSet) error {
 	newSS, err := sc.kubeCli.AppsV1beta1().StatefulSets(rc.Namespace).Create(set)
 	// sink already exists errors
 	if apierrors.IsAlreadyExists(err) {
@@ -60,7 +60,7 @@ func (sc *realStatefulSetControl) CreateStatefulSet(rc *v1alpha1.Redis, set *app
 }
 
 // UpdateStatefulSet update a StatefulSet in a Redis.
-func (sc *realStatefulSetControl) UpdateStatefulSet(rc *v1alpha1.Redis, set *apps.StatefulSet) (*apps.StatefulSet, error) {
+func (sc *realStatefulSetControl) UpdateStatefulSet(rc *v1alpha1.RedisCluster, set *apps.StatefulSet) (*apps.StatefulSet, error) {
 	ns := rc.GetNamespace()
 	rcName := rc.GetName()
 	setName := set.GetName()
@@ -91,13 +91,13 @@ func (sc *realStatefulSetControl) UpdateStatefulSet(rc *v1alpha1.Redis, set *app
 }
 
 // DeleteStatefulSet delete a StatefulSet in a Redis.
-func (sc *realStatefulSetControl) DeleteStatefulSet(rc *v1alpha1.Redis, set *apps.StatefulSet) error {
+func (sc *realStatefulSetControl) DeleteStatefulSet(rc *v1alpha1.RedisCluster, set *apps.StatefulSet) error {
 	err := sc.kubeCli.AppsV1beta1().StatefulSets(rc.Namespace).Delete(set.Name, nil)
 	sc.recordStatefulSetEvent("delete", rc, set, err)
 	return err
 }
 
-func (sc *realStatefulSetControl) recordStatefulSetEvent(verb string, rc *v1alpha1.Redis, set *apps.StatefulSet, err error) {
+func (sc *realStatefulSetControl) recordStatefulSetEvent(verb string, rc *v1alpha1.RedisCluster, set *apps.StatefulSet, err error) {
 	rcName := rc.Name
 	setName := set.Name
 	if err == nil {
@@ -119,7 +119,7 @@ var _ StatefulSetControlInterface = &realStatefulSetControl{}
 type FakeStatefulSetControl struct {
 	SetLister                appslisters.StatefulSetLister
 	SetIndexer               cache.Indexer
-	RcLister                 v1listers.RedisLister
+	RcLister                 v1listers.RedisClusterLister
 	RcIndexer                cache.Indexer
 	createStatefulSetTracker requestTracker
 	updateStatefulSetTracker requestTracker
@@ -128,7 +128,7 @@ type FakeStatefulSetControl struct {
 }
 
 // NewFakeStatefulSetControl returns a FakeStatefulSetControl
-func NewFakeStatefulSetControl(setInformer appsinformers.StatefulSetInformer, rcinformers rcinformers.RedisInformer) *FakeStatefulSetControl {
+func NewFakeStatefulSetControl(setInformer appsinformers.StatefulSetInformer, rcinformers rcinformers.RedisClusterInformer) *FakeStatefulSetControl {
 	return &FakeStatefulSetControl{
 		setInformer.Lister(),
 		setInformer.Informer().GetIndexer(),
@@ -165,7 +165,7 @@ func (ssc *FakeStatefulSetControl) SetStatusChange(fn func(*apps.StatefulSet)) {
 }
 
 // CreateStatefulSet adds the statefulset to SetIndexer
-func (ssc *FakeStatefulSetControl) CreateStatefulSet(_ *v1alpha1.Redis, set *apps.StatefulSet) error {
+func (ssc *FakeStatefulSetControl) CreateStatefulSet(_ *v1alpha1.RedisCluster, set *apps.StatefulSet) error {
 	defer func() {
 		ssc.createStatefulSetTracker.inc()
 		ssc.statusChange = nil
@@ -184,7 +184,7 @@ func (ssc *FakeStatefulSetControl) CreateStatefulSet(_ *v1alpha1.Redis, set *app
 }
 
 // UpdateStatefulSet updates the statefulset of SetIndexer
-func (ssc *FakeStatefulSetControl) UpdateStatefulSet(_ *v1alpha1.Redis, set *apps.StatefulSet) (*apps.StatefulSet, error) {
+func (ssc *FakeStatefulSetControl) UpdateStatefulSet(_ *v1alpha1.RedisCluster, set *apps.StatefulSet) (*apps.StatefulSet, error) {
 	defer func() {
 		ssc.updateStatefulSetTracker.inc()
 		ssc.statusChange = nil
@@ -202,7 +202,7 @@ func (ssc *FakeStatefulSetControl) UpdateStatefulSet(_ *v1alpha1.Redis, set *app
 }
 
 // DeleteStatefulSet deletes the statefulset of SetIndexer
-func (ssc *FakeStatefulSetControl) DeleteStatefulSet(_ *v1alpha1.Redis, _ *apps.StatefulSet) error {
+func (ssc *FakeStatefulSetControl) DeleteStatefulSet(_ *v1alpha1.RedisCluster, _ *apps.StatefulSet) error {
 	return nil
 }
 

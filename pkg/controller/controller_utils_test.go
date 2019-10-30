@@ -11,8 +11,8 @@ import (
 	"github.com/anywhy/redis-operator/pkg/apis/redis/v1alpha1"
 )
 
-func newRedis(name string) *v1alpha1.Redis {
-	return &v1alpha1.Redis{
+func newRedis(name string) *v1alpha1.RedisCluster {
+	return &v1alpha1.RedisCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: metav1.NamespaceDefault,
@@ -20,7 +20,7 @@ func newRedis(name string) *v1alpha1.Redis {
 	}
 }
 
-func newService(rc *v1alpha1.Redis, _ string) *corev1.Service {
+func newService(rc *v1alpha1.RedisCluster, _ string) *corev1.Service {
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      GetName(rc.Name, "master"),
@@ -33,7 +33,7 @@ func newService(rc *v1alpha1.Redis, _ string) *corev1.Service {
 	return svc
 }
 
-func newDeployment(rc *v1alpha1.Redis, name string) *extv1.Deployment {
+func newDeployment(rc *v1alpha1.RedisCluster, name string) *extv1.Deployment {
 	dep := &extv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      GetName(rc.Name, name),
@@ -46,7 +46,7 @@ func newDeployment(rc *v1alpha1.Redis, name string) *extv1.Deployment {
 	return dep
 }
 
-func newStatefulSet(rc *v1alpha1.Redis, name string) *apps.StatefulSet {
+func newStatefulSet(rc *v1alpha1.RedisCluster, name string) *apps.StatefulSet {
 	set := &apps.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      GetName(rc.Name, name),

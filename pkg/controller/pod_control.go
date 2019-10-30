@@ -22,9 +22,9 @@ import (
 
 // PodControlInterface defines the interface that RedisController uses to create, update, and delete Pods,
 type PodControlInterface interface {
-	CreatePod(*v1alpha1.Redis, *corev1.Pod) error
-	UpdatePod(*v1alpha1.Redis, *corev1.Pod) (*corev1.Pod, error)
-	DeletePod(*v1alpha1.Redis, *corev1.Pod) error
+	CreatePod(*v1alpha1.RedisCluster, *corev1.Pod) error
+	UpdatePod(*v1alpha1.RedisCluster, *corev1.Pod) (*corev1.Pod, error)
+	DeletePod(*v1alpha1.RedisCluster, *corev1.Pod) error
 }
 
 type realPodControl struct {
@@ -46,7 +46,7 @@ func NewRealPodControl(
 	}
 }
 
-func (rpc *realPodControl) CreatePod(rc *v1alpha1.Redis, pod *corev1.Pod) error {
+func (rpc *realPodControl) CreatePod(rc *v1alpha1.RedisCluster, pod *corev1.Pod) error {
 	retPod, err := rpc.kubeCli.CoreV1().Pods(rc.Namespace).Create(pod)
 	// sink already exists errors
 	if apierrors.IsAlreadyExists(err) {
@@ -60,7 +60,7 @@ func (rpc *realPodControl) CreatePod(rc *v1alpha1.Redis, pod *corev1.Pod) error 
 	return err
 }
 
-func (rpc *realPodControl) UpdatePod(rc *v1alpha1.Redis, pod *corev1.Pod) (*corev1.Pod, error) {
+func (rpc *realPodControl) UpdatePod(rc *v1alpha1.RedisCluster, pod *corev1.Pod) (*corev1.Pod, error) {
 	ns, rcName, labels := rc.GetNamespace(), rc.GetName(), pod.GetLabels()
 	if labels == nil {
 		return pod, fmt.Errorf("pod %s/%s has empty labels, Redis: %s", ns, pod.Name, rcName)
@@ -73,9 +73,9 @@ func (rpc *realPodControl) UpdatePod(rc *v1alpha1.Redis, pod *corev1.Pod) (*core
 	}
 
 	// if replica cluster set component slave role
-	if rc.Spec.Mode == v1alpha1.ReplicaCluster {
+	if rc.Spec.Mode == v1alpha1.Cluster {
 		if _, ok := labels[label.ComponentLabelKey]; !ok {
-			labels[label.ComponentLabelKey] = label.SlaveLabelKey
+			labels[label.ComponentLabelKey] = label.SlaveNodeLabelKey
 		}
 	}
 
@@ -103,7 +103,7 @@ func (rpc *realPodControl) UpdatePod(rc *v1alpha1.Redis, pod *corev1.Pod) (*core
 	return updatePod, err
 }
 
-func (rpc *realPodControl) DeletePod(rc *v1alpha1.Redis, pod *corev1.Pod) error {
+func (rpc *realPodControl) DeletePod(rc *v1alpha1.RedisCluster, pod *corev1.Pod) error {
 	ns := rc.GetNamespace()
 	podName := pod.GetName()
 	rcName := rc.GetName()
@@ -119,7 +119,7 @@ func (rpc *realPodControl) DeletePod(rc *v1alpha1.Redis, pod *corev1.Pod) error 
 
 // recordPodEvent records an event for verb applied to a Pod in a Redis. If err is nil the generated event will
 // have a reason of v1.EventTypeNormal. If err is not nil the generated event will have a reason of v1.EventTypeWarning.
-func (rpc *realPodControl) recordPodEvent(verb string, rc *v1alpha1.Redis, pod *corev1.Pod, err error) {
+func (rpc *realPodControl) recordPodEvent(verb string, rc *v1alpha1.RedisCluster, pod *corev1.Pod, err error) {
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
 		message := fmt.Sprintf("%s Pod %s in Redis %s successful",
@@ -139,7 +139,7 @@ var (
 	// TestName name label
 	TestName = "redis-cluster"
 	// TestComponentName component label for instance
-	TestComponentName = "master"
+	TestComponentName = "redis"
 	// TestClusterModeName component label cluster mode
 	TestClusterModeName = "replica"
 	// TestManagedByName controller by redis
@@ -148,6 +148,8 @@ var (
 	TestClusterName = "test"
 	// TestPodName cluster pod name
 	TestPodName = "test-pod"
+	// TestNodeRoleName cluster node role
+	TestNodeRoleName = "master"
 )
 
 // FakePodControl is a fake PodControlInterface
@@ -194,7 +196,7 @@ func (fpc *FakePodControl) SetGetClusterError(err error, after int) {
 }
 
 // CreatePod create pod
-func (fpc *FakePodControl) CreatePod(_ *v1alpha1.Redis, pod *corev1.Pod) error {
+func (fpc *FakePodControl) CreatePod(_ *v1alpha1.RedisCluster, pod *corev1.Pod) error {
 	defer fpc.createPodTracker.inc()
 	if fpc.createPodTracker.errorReady() {
 		defer fpc.createPodTracker.reset()
@@ -205,7 +207,7 @@ func (fpc *FakePodControl) CreatePod(_ *v1alpha1.Redis, pod *corev1.Pod) error {
 }
 
 // DeletePod delete pod
-func (fpc *FakePodControl) DeletePod(_ *v1alpha1.Redis, pod *corev1.Pod) error {
+func (fpc *FakePodControl) DeletePod(_ *v1alpha1.RedisCluster, pod *corev1.Pod) error {
 	defer fpc.deletePodTracker.inc()
 	if fpc.deletePodTracker.errorReady() {
 		defer fpc.deletePodTracker.reset()
@@ -216,7 +218,7 @@ func (fpc *FakePodControl) DeletePod(_ *v1alpha1.Redis, pod *corev1.Pod) error {
 }
 
 // UpdatePod update pod info
-func (fpc *FakePodControl) UpdatePod(_ *v1alpha1.Redis, pod *corev1.Pod) (*corev1.Pod, error) {
+func (fpc *FakePodControl) UpdatePod(_ *v1alpha1.RedisCluster, pod *corev1.Pod) (*corev1.Pod, error) {
 	defer fpc.updatePodTracker.inc()
 	if fpc.updatePodTracker.errorReady() {
 		defer fpc.updatePodTracker.reset()
@@ -228,6 +230,7 @@ func (fpc *FakePodControl) UpdatePod(_ *v1alpha1.Redis, pod *corev1.Pod) (*corev
 	setIfNotEmpty(pod.Labels, label.ManagedByLabelKey, TestManagedByName)
 	setIfNotEmpty(pod.Labels, label.InstanceLabelKey, TestClusterName)
 	setIfNotEmpty(pod.Labels, label.ClusterModeLabelKey, TestClusterModeName)
+	setIfNotEmpty(pod.Labels, label.ClusterNodeRoleLabelKey, TestNodeRoleName)
 
 	return pod, fpc.PodIndexer.Update(pod)
 }

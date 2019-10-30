@@ -16,7 +16,7 @@ import (
 // HAControlInterface is an interface that knows how to manage get redis master
 type HAControlInterface interface {
 	// Monitor .
-	Watch(rc *v1alpha1.Redis, callback func(master string) error)
+	Watch(rc *v1alpha1.RedisCluster, callback func(master string) error)
 }
 
 // defaultHAControl is the default implementation of HAControlInterface.
@@ -103,7 +103,7 @@ func (w *haWatcher) watchSentinels(sentinels []string, watchCallback func(master
 	}(w.monitor)
 }
 
-func (hac *defaultHAControl) Watch(rc *v1alpha1.Redis, callback func(master string) error) {
+func (hac *defaultHAControl) Watch(rc *v1alpha1.RedisCluster, callback func(master string) error) {
 	hac.mutex.Lock()
 	defer hac.mutex.Unlock()
 	rcName, ns := rc.GetName(), rc.GetNamespace()

@@ -46,7 +46,7 @@ func IsRequeueError(err error) bool {
 }
 
 // GetOwnerRef returns Redis's OwnerReference
-func GetOwnerRef(rc *v1alpha1.Redis) metav1.OwnerReference {
+func GetOwnerRef(rc *v1alpha1.RedisCluster) metav1.OwnerReference {
 	controller := true
 	blockOwnerDeletion := true
 	return metav1.OwnerReference{
@@ -110,6 +110,11 @@ func RedisPeerMemberName(clusterName string) string {
 // RedisMemberName return redis name for redis cluster
 func RedisMemberName(clusterName string) string {
 	return fmt.Sprintf("%s-redis", clusterName)
+}
+
+// Int32Ptr returns a pointer to an int32
+func Int32Ptr(i int32) *int32 {
+	return &i
 }
 
 // requestTracker is used by unit test for mocking request error

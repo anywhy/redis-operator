@@ -125,18 +125,18 @@ func statefulSetIsUpgrading(set *apps.StatefulSet) bool {
 func podinfoVolume() (corev1.VolumeMount, corev1.Volume) {
 	m := corev1.VolumeMount{Name: "podinfo", ReadOnly: true, MountPath: "/etc/podinfo"}
 	v := corev1.Volume{
-		Name: "podinfo",
+		Name: "annotations",
 		VolumeSource: corev1.VolumeSource{
 			DownwardAPI: &corev1.DownwardAPIVolumeSource{
 				Items: []corev1.DownwardAPIVolumeFile{
 					{
-						Path:     "labels",
-						FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.labels"},
+						Path:     "annotations",
+						FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.annotations"},
 					},
 					{
 						Path: "redisrole",
 						FieldRef: &corev1.ObjectFieldSelector{
-							FieldPath: "metadata.labels['app.kubernetes.io/component']",
+							FieldPath: "metadata.labels['anywhy.github.io/node-role']",
 						},
 					},
 				},

@@ -311,7 +311,7 @@ func pvMetaInfoMatchDesire(ns string, pv *corev1.PersistentVolume) bool {
 		pv.Annotations[label.AnnPodNameKey] == controller.TestPodName
 }
 
-func newPod(rc *v1alpha1.Redis) *corev1.Pod {
+func newPod(rc *v1alpha1.RedisCluster) *corev1.Pod {
 	return &corev1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Pod",

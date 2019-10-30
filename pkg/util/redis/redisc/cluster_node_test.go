@@ -12,7 +12,7 @@ import (
 func TestLoadInfo(t *testing.T) {
 	g := NewGomegaWithT(t)
 
-	reply := ""
+	reply := "bfcb10a40bab6baff479a39a55a1800de6f33533 127.0.0.1:8005@18005 myself,master - 0 0 0 connected"
 	cn := &ClusterNode{}
 
 	nodes := strings.Split(reply, "\n")
@@ -84,4 +84,6 @@ func TestLoadInfo(t *testing.T) {
 	}
 
 	g.Expect(cn.Info.IP).Should(Equal("127.0.0.1"))
+	g.Expect(cn.Info.Name).Should(Equal("bfcb10a40bab6baff479a39a55a1800de6f33533"))
+
 }
