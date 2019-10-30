@@ -32,12 +32,12 @@ func testCreate(ns, clusterName string) {
 }
 
 func allMembersRunning(ns, clusterName string) (bool, error) {
-	rc, err := cli.RedisV1alpha1().Redises(ns).Get(clusterName, metav1.GetOptions{})
+	rc, err := cli.AnywhyV1alpha1().RedisClusters(ns).Get(clusterName, metav1.GetOptions{})
 	if err != nil {
 		return false, nil
 	}
 
-	if rc.Spec.Mode == v1alpha1.ReplicaCluster {
+	if rc.Spec.Mode == v1alpha1.Replica {
 		running, err := replicaMemberRuning(rc)
 		if err != nil || !running {
 			return false, nil
@@ -47,7 +47,7 @@ func allMembersRunning(ns, clusterName string) (bool, error) {
 	return true, nil
 }
 
-func replicaMemberRuning(rc *v1alpha1.Redis) (bool, error) {
+func replicaMemberRuning(rc *v1alpha1.RedisCluster) (bool, error) {
 	ns, rcName := rc.Namespace, rc.Name
 	setName := controller.RedisMemberName(rcName)
 	replicaSet, err := kubeCli.AppsV1beta1().StatefulSets(ns).Get(setName, metav1.GetOptions{})
@@ -58,20 +58,20 @@ func replicaMemberRuning(rc *v1alpha1.Redis) (bool, error) {
 
 	logf("replicaSet.Status: %+v", replicaSet.Status)
 
-	if rc.Status.Replica.StatefulSet == nil {
+	if rc.Status.Redis.StatefulSet == nil {
 		logf("rc.Status.Replica.StatefulSet is nil")
 		return false, nil
 	}
 
-	if *replicaSet.Spec.Replicas != rc.Spec.Redis.Members {
-		logf("replicaSet.Spec.Replicas(%d) != rc.Spec.Redis.Members(%d)",
-			*replicaSet.Spec.Replicas, rc.Spec.Redis.Members)
+	if *replicaSet.Spec.Replicas != rc.Spec.Redis.Replicas {
+		logf("replicaSet.Spec.Replicas(%d) != rc.Spec.Redis.Replicas(%d)",
+			*replicaSet.Spec.Replicas, rc.Spec.Redis.Replicas)
 		return false, nil
 	}
 
-	if replicaSet.Status.ReadyReplicas != rc.Spec.Redis.Members {
+	if replicaSet.Status.ReadyReplicas != rc.Spec.Redis.Replicas {
 		logf("replicaSet.Status.ReadyReplicas(%d) != %d",
-			replicaSet.Status.ReadyReplicas, rc.Spec.Redis.Members)
+			replicaSet.Status.ReadyReplicas, rc.Spec.Redis.Replicas)
 		return false, nil
 	}
 
