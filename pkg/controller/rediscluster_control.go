@@ -18,13 +18,13 @@ import (
 	listers "github.com/anywhy/redis-operator/pkg/client/listers/redis/v1alpha1"
 )
 
-// RedisControlInterface manages Redises
-type RedisControlInterface interface {
-	UpdateRedis(rc *v1alpha1.RedisCluster, newStatus *v1alpha1.RedisClusterStatus,
+// RedisClusterControlInterface manages Redises
+type RedisClusterControlInterface interface {
+	UpdateRedisCluster(rc *v1alpha1.RedisCluster, newStatus *v1alpha1.RedisClusterStatus,
 		oldStatus *v1alpha1.RedisClusterStatus) (*v1alpha1.RedisCluster, error)
 }
 
-type realRedisControl struct {
+type realRedisClusterControl struct {
 	cli      versioned.Interface
 	rcLister listers.RedisClusterLister
 	recorder record.EventRecorder
@@ -33,15 +33,15 @@ type realRedisControl struct {
 // NewRealRedisControl creates a new RedisControlInterface
 func NewRealRedisControl(cli versioned.Interface,
 	rcLister listers.RedisClusterLister,
-	recorder record.EventRecorder) RedisControlInterface {
-	return &realRedisControl{
+	recorder record.EventRecorder) RedisClusterControlInterface {
+	return &realRedisClusterControl{
 		cli,
 		rcLister,
 		recorder,
 	}
 }
 
-func (rrc *realRedisControl) UpdateRedis(rc *v1alpha1.RedisCluster,
+func (rrc *realRedisClusterControl) UpdateRedisCluster(rc *v1alpha1.RedisCluster,
 	newStatus *v1alpha1.RedisClusterStatus, oldStatus *v1alpha1.RedisClusterStatus) (*v1alpha1.RedisCluster, error) {
 	ns, rcName := rc.GetNamespace(), rc.GetName()
 	status := rc.Status.DeepCopy()
@@ -73,7 +73,7 @@ func (rrc *realRedisControl) UpdateRedis(rc *v1alpha1.RedisCluster,
 	return updateRC, err
 }
 
-func (rrc *realRedisControl) recordRedisEvent(verb string, rc *v1alpha1.RedisCluster, err error) {
+func (rrc *realRedisClusterControl) recordRedisEvent(verb string, rc *v1alpha1.RedisCluster, err error) {
 	rcName := rc.GetName()
 	if err == nil {
 		reason := fmt.Sprintf("Successful%s", strings.Title(verb))
@@ -88,16 +88,16 @@ func (rrc *realRedisControl) recordRedisEvent(verb string, rc *v1alpha1.RedisClu
 	}
 }
 
-// FakeRedisControl is a fake RedisControlInterface
-type FakeRedisControl struct {
+// FakeRedisClusterControl is a fake RedisClusterControlInterface
+type FakeRedisClusterControl struct {
 	RcLister           listers.RedisClusterLister
 	RcIndexer          cache.Indexer
 	updateRedisTracker requestTracker
 }
 
 // NewFakeFakeRedisControl returns a FakeRedisControl
-func NewFakeFakeRedisControl(rcInformer rcinformers.RedisClusterInformer) *FakeRedisControl {
-	return &FakeRedisControl{
+func NewFakeFakeRedisControl(rcInformer rcinformers.RedisClusterInformer) *FakeRedisClusterControl {
+	return &FakeRedisClusterControl{
 		rcInformer.Lister(),
 		rcInformer.Informer().GetIndexer(),
 		requestTracker{0, nil, 0},
@@ -105,13 +105,13 @@ func NewFakeFakeRedisControl(rcInformer rcinformers.RedisClusterInformer) *FakeR
 }
 
 // SetUpdateRedisError sets the error attributes of updateRedisTracker
-func (frc *FakeRedisControl) SetUpdateRedisError(err error, after int) {
+func (frc *FakeRedisClusterControl) SetUpdateRedisError(err error, after int) {
 	frc.updateRedisTracker.err = err
 	frc.updateRedisTracker.after = after
 }
 
-// UpdateRedis updates the redis cluster
-func (frc *FakeRedisControl) UpdateRedis(rc *v1alpha1.RedisCluster, _ *v1alpha1.RedisClusterStatus,
+// UpdateRedisCluster updates the redis cluster
+func (frc *FakeRedisClusterControl) UpdateRedisCluster(rc *v1alpha1.RedisCluster, _ *v1alpha1.RedisClusterStatus,
 	_ *v1alpha1.RedisClusterStatus) (*v1alpha1.RedisCluster, error) {
 	defer frc.updateRedisTracker.inc()
 	if frc.updateRedisTracker.errorReady() {

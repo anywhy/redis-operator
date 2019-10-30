@@ -19,7 +19,7 @@ type ControlInterface interface {
 }
 
 type defaultRedisControl struct {
-	rcControl                 controller.RedisControlInterface
+	rcControl                 controller.RedisClusterControlInterface
 	replicaMemberManager      manager.Manager
 	redisClusterMemberManager manager.Manager
 	reclaimPolicyManager      manager.Manager
@@ -30,7 +30,7 @@ type defaultRedisControl struct {
 // NewDefaultRedisControl returns a new instance of the default implementation ControlInterface that
 // implements the documented semantics for Rediss.
 func NewDefaultRedisControl(
-	rcControl controller.RedisControlInterface,
+	rcControl controller.RedisClusterControlInterface,
 	replicaMemberManager manager.Manager,
 	redisClusterMemberManager manager.Manager,
 	reclaimPolicyManager manager.Manager,
@@ -57,7 +57,7 @@ func (rcc *defaultRedisControl) UpdateRedis(rc *v1alpha1.RedisCluster) error {
 	}
 
 	if !apiequality.Semantic.DeepEqual(&rc.Status, oldStatus) {
-		_, err := rcc.rcControl.UpdateRedis(rc.DeepCopy(), &rc.Status, oldStatus)
+		_, err := rcc.rcControl.UpdateRedisCluster(rc.DeepCopy(), &rc.Status, oldStatus)
 		if err != nil {
 			errs = append(errs, err)
 		}

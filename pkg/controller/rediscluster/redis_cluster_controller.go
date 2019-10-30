@@ -29,7 +29,7 @@ import (
 )
 
 // controllerKind contains the schema.GroupVersionKind for this controller type.
-var controllerKind = v1alpha1.SchemeGroupVersion.WithKind("Redis")
+var controllerKind = v1alpha1.SchemeGroupVersion.WithKind("RedisCluster")
 
 // Controller controls Rediss.
 type Controller struct {
