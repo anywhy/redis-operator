@@ -31,7 +31,6 @@ type replicaMemberManager struct {
 	replicaUpgrader Upgrader
 	autoFailover    bool
 	replicaFailover Failover
-	sentinelManager manager.Manager
 }
 
 // ServiceConfig config to a K8s service
@@ -67,20 +66,11 @@ func NewReplicaMemberManager(
 		autoFailover:    autoFailover,
 		replicaFailover: replicaFailover,
 	}
-	rmm.sentinelManager = NewSentinelMemberManager(setControl, svcControl, svcLister, podLister, setLister)
 	return rmm
 }
 
 // Sync	implements redis logic for syncing Redis.
 func (rmm *replicaMemberManager) Sync(rc *v1alpha1.RedisCluster) error {
-	if err := rmm.syncServiceForReplicaRedis(rc); err != nil {
-		return err
-	}
-	return rmm.syncStatefulSetForReplicaRedis(rc)
-}
-
-// sync service
-func (rmm *replicaMemberManager) syncServiceForReplicaRedis(rc *v1alpha1.RedisCluster) error {
 	svcList := []ServiceConfig{{
 		Name:     "redis-master",
 		Port:     6379,
@@ -124,36 +114,45 @@ func (rmm *replicaMemberManager) syncServiceForReplicaRedis(rc *v1alpha1.RedisCl
 		svcList = append(svcList, slaveSvcList...)
 	}
 
-	// create service
-	ns, rcName := rc.GetNamespace(), rc.GetName()
-	for _, svcConfig := range svcList {
-		newSvc := rmm.getNewRedisServiceForRedis(rc, svcConfig)
-		oldSvcTmp, err := rmm.svcLister.Services(ns).Get(svcConfig.MemberName(rcName))
-		if err != nil {
-			if apierrors.IsNotFound(err) {
-				err := setServiceLastAppliedConfigAnnotation(newSvc)
-				if err != nil {
-					return err
-				}
-				return rmm.svcControl.CreateService(rc, newSvc)
-			}
+	for _, svc := range svcList {
+		if err := rmm.syncServiceForReplicaRedis(rc, svc); err != nil {
 			return err
 		}
+	}
 
-		oldSvc := oldSvcTmp.DeepCopy()
-		if ok, err := serviceEqual(newSvc, oldSvc); err != nil {
-			return err
-		} else if !ok {
-			svc := *oldSvc
-			svc.Spec = newSvc.Spec
-			svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-			if err = setServiceLastAppliedConfigAnnotation(&svc); err != nil {
+	return rmm.syncStatefulSetForReplicaRedis(rc)
+}
+
+// sync service
+func (rmm *replicaMemberManager) syncServiceForReplicaRedis(rc *v1alpha1.RedisCluster, svc ServiceConfig) error {
+	// create service
+	ns, rcName := rc.GetNamespace(), rc.GetName()
+	newSvc := rmm.getNewRedisServiceForRedis(rc, svc)
+	oldSvcTmp, err := rmm.svcLister.Services(ns).Get(svc.MemberName(rcName))
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			if err := setServiceLastAppliedConfigAnnotation(newSvc); err != nil {
 				return err
 			}
 
-			_, err := rmm.svcControl.UpdateService(rc, &svc)
+			return rmm.svcControl.CreateService(rc, newSvc)
+		}
+		return err
+	}
+
+	oldSvc := oldSvcTmp.DeepCopy()
+	if ok, err := serviceEqual(newSvc, oldSvc); err != nil {
+		return err
+	} else if !ok {
+		svc := *oldSvc
+		svc.Spec = newSvc.Spec
+		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
+		if err = setServiceLastAppliedConfigAnnotation(&svc); err != nil {
 			return err
 		}
+
+		_, err := rmm.svcControl.UpdateService(rc, &svc)
+		return err
 	}
 
 	return nil
@@ -178,7 +177,7 @@ func (rmm *replicaMemberManager) syncStatefulSetForReplicaRedis(rc *v1alpha1.Red
 			return err
 		}
 		rc.Status.Redis.StatefulSet = &apps.StatefulSetStatus{}
-		return nil
+		return controller.RequeueErrorf("RedisCluster: [%s/%s], waiting for Replica cluster running", ns, rcName)
 	}
 
 	// sync replica cluster node role
@@ -211,13 +210,9 @@ func (rmm *replicaMemberManager) syncStatefulSetForReplicaRedis(rc *v1alpha1.Red
 		}
 	}
 
-	// enable sentinel
-	if rc.IsEnableSentinel() && rc.Spec.Redis.Replicas > 1 {
-		if err := rmm.sentinelManager.Sync(rc); err != nil {
-			return err
-		}
-		if rmm.autoFailover && rc.SentinelIsOk() {
-			rmm.replicaFailover.Failover(rc)
+	if rmm.autoFailover {
+		if rc.RedisAllPodsStarted() {
+			// TODO auto failover
 		}
 	}
 
@@ -286,7 +281,7 @@ func (rmm *replicaMemberManager) getNewRedisServiceForRedis(rc *v1alpha1.RedisCl
 
 	svcName := svcConfig.MemberName(rcName)
 	instanceName := rc.GetLabels()[label.InstanceLabelKey]
-	rediLabel := svcConfig.SvcLabel(label.New().Instance(instanceName)).ReplicaMode().Labels()
+	rediLabel := svcConfig.SvcLabel(label.New().Instance(instanceName).Redis()).ReplicaMode().Labels()
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            svcName,

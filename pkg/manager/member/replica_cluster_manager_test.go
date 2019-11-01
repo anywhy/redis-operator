@@ -160,7 +160,7 @@ func TestReplicaMemberManagerSyncCreate(t *testing.T) {
 			errExpectFn: func(g *GomegaWithT, err error) {
 				g.Expect(err).To(HaveOccurred())
 				//fmt.Printf("%v", err.Error())
-				g.Expect(strings.Contains(err.Error(), "cant' get storage request size: 10xxxxi for Redis: default/test-redis")).To(BeTrue())
+				g.Expect(strings.Contains(err.Error(), "cant' get storage request size: 10xxxxi for Redis: default/demo")).To(BeTrue())
 			},
 			errWhenCreateReplicaPeerService: false,
 			relipaMasterSvcCreated:          true,
@@ -211,7 +211,6 @@ func newFakeReplicaMemberManager() (*replicaMemberManager, *controller.FakeState
 		replicaUpgrader,
 		autoFailover,
 		replicaFailover,
-		nil,
 	}, setControl, svcControl, podInformer.Informer().GetIndexer(), pvcInformer.Informer().GetIndexer()
 
 }
@@ -223,7 +222,7 @@ func newRedisForReplica() *v1alpha1.RedisCluster {
 			APIVersion: "anywhy.github.io/v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-redis",
+			Name:      "demo",
 			Namespace: corev1.NamespaceDefault,
 			UID:       types.UID("test"),
 		},

@@ -216,7 +216,7 @@ func (rcc *Controller) sync(key string) error {
 }
 
 func (rcc *Controller) syncRedis(rc *v1alpha1.RedisCluster) error {
-	return rcc.control.UpdateRedis(rc)
+	return rcc.control.UpdateRedisCluster(rc)
 }
 
 // enqueueRedis enqueues the given Redis in the work queue.

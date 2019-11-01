@@ -57,7 +57,7 @@ func TestRedisControlUpdateRedis(t *testing.T) {
 			metaManager.SetSyncError(fmt.Errorf("meta manager sync error"))
 		}
 
-		err := control.UpdateRedis(rc)
+		err := control.UpdateRedisCluster(rc)
 		if test.errExpectFn != nil {
 			test.errExpectFn(g, err)
 		}

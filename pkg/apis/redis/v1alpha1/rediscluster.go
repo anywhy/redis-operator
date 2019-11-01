@@ -24,3 +24,8 @@ func (rc *RedisCluster) IsEnableSentinel() bool {
 func (rc *RedisCluster) RedisRealReplicas() int32 {
 	return rc.Spec.Redis.Replicas + int32(len(rc.Status.Redis.FailureMembers))
 }
+
+// RedisAllPodsStarted redis all pod started
+func (rc *RedisCluster) RedisAllPodsStarted() bool {
+	return rc.RedisRealReplicas() == rc.Status.Redis.StatefulSet.Replicas
+}
