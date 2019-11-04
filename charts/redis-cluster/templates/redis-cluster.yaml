@@ -1,5 +1,5 @@
-apiVersion: anywhy.github/v1alpha1
-kind: Redis
+apiVersion: anywhy.github.io/v1alpha1
+kind: RedisCluster
 metadata:
   name: {{ .Values.clusterName }}
   labels:
@@ -15,7 +15,7 @@ spec:
 {{ toYaml .Values.services | indent 4 }}
   schedulerName: {{ .Values.schedulerName | default "default-scheduler" }}
   redis:
-    members: {{ .Values.redis.members | default 1 }}
+    replicas: {{ .Values.redis.replicas | default 1 }}
     image: {{ .Values.redis.image }}
     imagePullPolicy: {{ .Values.redis.imagePullPolicy | default "IfNotPresent" }}
   {{- if .Values.redis.storageClassName }}
@@ -31,7 +31,6 @@ spec:
     nodeSelector:
 {{ toYaml .Values.redis.nodeSelector | indent 6 }}
   {{- end }}
-    nodeSelectorRequired: {{ .Values.nodeSelectorRequired | default true }}
   {{- if .Values.redis.tolerations }}
     tolerations:
 {{ toYaml .Values.redis.tolerations | indent 4 }}
@@ -39,7 +38,6 @@ spec:
 {{- if ((eq .Values.redis.mode "replica") and (gt .Values.redis.members 2)) and (eq .Values.sentinel.enable true) }}
   sentinel:
     enable: {{ .Values.sentinel.enable | default false }}
-    schedulerName: {{ .Values.schedulerName | default "default-scheduler" }}
     masterName: {{ .Values.sentinel.masterName | default (printf (.Values.clusterName)) }}
     replicas: {{ .Values.sentinel.replicas | default 3 }}
   {{- if .Values.sentinel.resources }}
@@ -52,7 +50,6 @@ spec:
     nodeSelector:
 {{ toYaml .Values.redis.nodeSelector | indent 6 }}
   {{- end }}
-    nodeSelectorRequired: {{ .Values.nodeSelectorRequired | default true }}
   {{- if .Values.redis.tolerations }}
     tolerations:
 {{ toYaml .Values.redis.tolerations | indent 4 }}

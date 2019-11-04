@@ -67,7 +67,7 @@ func NewController(
 	eventBroadcaster.StartLogging(glog.Infof)
 	eventBroadcaster.StartRecordingToSink(&eventv1.EventSinkImpl{
 		Interface: eventv1.New(kubeCli.CoreV1().RESTClient()).Events("")})
-	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "redises"})
+	recorder := eventBroadcaster.NewRecorder(v1alpha1.Scheme, corev1.EventSource{Component: "rediscluster"})
 
 	rcInformer := informerFactory.Anywhy().V1alpha1().RedisClusters()
 	setInformer := kubeInformerFactory.Apps().V1beta1().StatefulSets()
@@ -122,7 +122,7 @@ func NewController(
 		),
 		queue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.DefaultControllerRateLimiter(),
-			"redises",
+			"redisclusters",
 		),
 	}
 

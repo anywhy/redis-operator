@@ -180,15 +180,15 @@ func (rmm *replicaMemberManager) syncStatefulSetForReplicaRedis(rc *v1alpha1.Red
 		return controller.RequeueErrorf("RedisCluster: [%s/%s], waiting for Replica cluster running", ns, rcName)
 	}
 
-	// sync replica cluster node role
-	if err := rmm.syncReplicaClusterRole(rc, oldSet); err != nil {
-		glog.Errorf("failed to sync Redis role: [%s/%s]'s status, error: %v", ns, rcName, err)
-		return err
-	}
-
 	// sync status
 	if err := rmm.syncReplicaStatefulSetStatus(rc, oldSet); err != nil {
 		glog.Errorf("failed to sync Redis: [%s/%s]'s status, error: %v", ns, rcName, err)
+		return err
+	}
+
+	// sync replica cluster node role
+	if err := rmm.syncReplicaClusterRole(rc, oldSet); err != nil {
+		glog.Errorf("failed to sync Redis role: [%s/%s]'s status, error: %v", ns, rcName, err)
 		return err
 	}
 
@@ -237,7 +237,7 @@ func (rmm *replicaMemberManager) syncReplicaClusterRole(rc *v1alpha1.RedisCluste
 	ns, rcName := rc.GetNamespace(), rc.GetName()
 
 	defaultMasterPod := ordinalPodName(v1alpha1.RedisMemberType, rcName, 0)
-	if &rc.Status.Redis.Masters[0] != nil && rc.Status.Redis.Masters[0].Name != "" {
+	if &rc.Status.Redis.Masters != nil && rc.Status.Redis.Masters[0].Name != "" {
 		defaultMasterPod = rc.Status.Redis.Masters[0].Name
 	}
 
@@ -322,6 +322,8 @@ func (rmm *replicaMemberManager) syncReplicaStatefulSetStatus(rc *v1alpha1.Redis
 	} else {
 		rc.Status.Redis.Phase = v1alpha1.NormalPhase
 	}
+
+	// TODO update redis members
 
 	return nil
 }
