@@ -14,7 +14,7 @@ import (
 
 const (
 	// LastAppliedConfigAnnotation is annotation key of last applied configuration
-	LastAppliedConfigAnnotation = "anywhy.github/last-applied-configuration"
+	LastAppliedConfigAnnotation = "anywhy.github.io/last-applied-configuration"
 	// ImagePullBackOff is the pod state of image pull failed
 	ImagePullBackOff = "ImagePullBackOff"
 	// ErrImagePull is the pod state of image pull failed
@@ -123,7 +123,7 @@ func statefulSetIsUpgrading(set *apps.StatefulSet) bool {
 }
 
 func podinfoVolume() (corev1.VolumeMount, corev1.Volume) {
-	m := corev1.VolumeMount{Name: "podinfo", ReadOnly: true, MountPath: "/etc/podinfo"}
+	m := corev1.VolumeMount{Name: "annotations", ReadOnly: true, MountPath: "/etc/podinfo"}
 	v := corev1.Volume{
 		Name: "annotations",
 		VolumeSource: corev1.VolumeSource{

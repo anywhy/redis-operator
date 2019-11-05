@@ -76,7 +76,7 @@ func (rmm *replicaMemberManager) Sync(rc *v1alpha1.RedisCluster) error {
 		Port:     6379,
 		SvcLabel: func(l label.Label) label.Label { return l.Master() },
 		MemberName: func(clusterName string) string {
-			return fmt.Sprintf("%s-master", controller.RedisMemberName(clusterName))
+			return controller.RedisMemberName(clusterName)
 		},
 		Headless: false,
 	},
@@ -100,17 +100,7 @@ func (rmm *replicaMemberManager) Sync(rc *v1alpha1.RedisCluster) error {
 				return fmt.Sprintf("%s-slave", controller.RedisMemberName(clusterName))
 			},
 			Headless: false,
-		},
-			{
-				Name:     "redis-salve-peer",
-				Port:     6379,
-				SvcLabel: func(l label.Label) label.Label { return l.Slave() },
-				MemberName: func(clusterName string) string {
-					return fmt.Sprintf("%s-slave-peer", controller.RedisMemberName(clusterName))
-				},
-				Headless: true,
-			},
-		}
+		}}
 		svcList = append(svcList, slaveSvcList...)
 	}
 
@@ -187,7 +177,7 @@ func (rmm *replicaMemberManager) syncStatefulSetForReplicaRedis(rc *v1alpha1.Red
 	}
 
 	// sync replica cluster node role
-	if err := rmm.syncReplicaClusterRole(rc, oldSet); err != nil {
+	if err := rmm.setRoleLabelsForCluster(rc, oldSet); err != nil {
 		glog.Errorf("failed to sync Redis role: [%s/%s]'s status, error: %v", ns, rcName, err)
 		return err
 	}
@@ -232,13 +222,14 @@ func (rmm *replicaMemberManager) syncStatefulSetForReplicaRedis(rc *v1alpha1.Red
 	return nil
 }
 
-// syncReplicaClusterRole sync redis cluster node role
-func (rmm *replicaMemberManager) syncReplicaClusterRole(rc *v1alpha1.RedisCluster, set *apps.StatefulSet) error {
+// setRoleLabelsForCluster sync redis cluster node role
+func (rmm *replicaMemberManager) setRoleLabelsForCluster(rc *v1alpha1.RedisCluster, set *apps.StatefulSet) error {
 	ns, rcName := rc.GetNamespace(), rc.GetName()
 
 	defaultMasterPod := ordinalPodName(v1alpha1.RedisMemberType, rcName, 0)
-	if &rc.Status.Redis.Masters != nil && rc.Status.Redis.Masters[0].Name != "" {
-		defaultMasterPod = rc.Status.Redis.Masters[0].Name
+	oldMasters := rc.Status.Redis.Masters
+	if len(oldMasters) > 0 && oldMasters[0] != "" {
+		defaultMasterPod = rc.Status.Redis.Masters[0]
 	}
 
 	instanceName := rc.GetLabels()[label.InstanceLabelKey]
@@ -252,24 +243,19 @@ func (rmm *replicaMemberManager) syncReplicaClusterRole(rc *v1alpha1.RedisCluste
 		return err
 	}
 
-	if len(pods) > 0 {
-		for _, pod := range pods {
-			podCopy := pod.DeepCopy()
-			nodeRoleLabelKey := podCopy.Labels[label.ClusterNodeRoleLabelKey]
-			if nodeRoleLabelKey == "" && podCopy.Name == defaultMasterPod {
-				podCopy.Labels[label.ComponentLabelKey] = label.MasterNodeLabelKey
-				rc.Status.Redis.Masters[0].Name = defaultMasterPod
-			} else if nodeRoleLabelKey != "" && nodeRoleLabelKey == label.MasterNodeLabelKey &&
-				podCopy.Name != defaultMasterPod {
-				rc.Status.Redis.Masters[0].Name = podCopy.Name
-			} else {
-				podCopy.Labels[label.ComponentLabelKey] = label.SlaveNodeLabelKey
-			}
+	for _, pod := range pods {
+		podCopy := pod.DeepCopy()
+		nodeRoleLabelKey := podCopy.Labels[label.ClusterNodeRoleLabelKey]
+		if len(nodeRoleLabelKey) == 0 && podCopy.GetName() == defaultMasterPod ||
+			nodeRoleLabelKey == label.MasterNodeLabelKey {
+			podCopy.Labels[label.ClusterNodeRoleLabelKey] = label.MasterNodeLabelKey
+		} else {
+			podCopy.Labels[label.ClusterNodeRoleLabelKey] = label.SlaveNodeLabelKey
+		}
 
-			// 更新节点
-			if _, err := rmm.podControl.UpdatePod(rc, podCopy); err != nil {
-				return err
-			}
+		// 更新节点
+		if _, err := rmm.podControl.UpdatePod(rc, podCopy); err != nil {
+			return err
 		}
 	}
 
@@ -323,7 +309,38 @@ func (rmm *replicaMemberManager) syncReplicaStatefulSetStatus(rc *v1alpha1.Redis
 		rc.Status.Redis.Phase = v1alpha1.NormalPhase
 	}
 
-	// TODO update redis members
+	instanceName := rc.GetLabels()[label.InstanceLabelKey]
+	selector, err := label.New().Instance(instanceName).Redis().ReplicaMode().Selector()
+	if err != nil {
+		return err
+	}
+	pods, err := rmm.podLister.Pods(rc.GetNamespace()).List(selector)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
+
+	oldMasters := rc.Status.Redis.Masters
+	rediStatus, masters := map[string]v1alpha1.RedisMember{}, []string{}
+	for _, pod := range pods {
+		podCopy := pod.DeepCopy()
+		nodeRoleLabelKey := podCopy.Labels[label.ClusterNodeRoleLabelKey]
+		rediStatus[podCopy.GetName()] = v1alpha1.RedisMember{
+			Name:               podCopy.GetName(),
+			Role:               nodeRoleLabelKey,
+			LastTransitionTime: metav1.Now(),
+		}
+		if nodeRoleLabelKey == label.MasterNodeLabelKey {
+			masters = append(masters, podCopy.GetName())
+		}
+	}
+
+	// if has not new master use old master
+	if len(oldMasters) > 0 && len(masters) == 0 {
+		masters = oldMasters
+	}
+
+	rc.Status.Redis.Members = rediStatus
+	rc.Status.Redis.Masters = masters
 
 	return nil
 }
@@ -363,7 +380,7 @@ func (rmm *replicaMemberManager) getNewReplicaStatefulSet(rc *v1alpha1.RedisClus
 	volMounts := []corev1.VolumeMount{
 		podMount,
 		{Name: "config", ReadOnly: true, MountPath: "/etc/redis"},
-		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/bin"},
+		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/sbin"},
 		{Name: v1alpha1.RedisMemberType.String(), MountPath: "/data"},
 	}
 	vols := []corev1.Volume{
@@ -437,7 +454,7 @@ func (rmm *replicaMemberManager) getNewReplicaStatefulSet(rc *v1alpha1.RedisClus
 							Name:            "redis",
 							Image:           rc.Spec.Redis.Image,
 							ImagePullPolicy: rc.Spec.Redis.ImagePullPolicy,
-							Command:         []string{"/bin/sh", "/usr/local/bin/server_start_script.sh"},
+							Command:         []string{"/bin/bash", "/usr/local/sbin/server_start_script.sh"},
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          "redis",

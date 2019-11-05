@@ -345,10 +345,8 @@ func (in *ServerStatus) DeepCopyInto(out *ServerStatus) {
 	}
 	if in.Masters != nil {
 		in, out := &in.Masters, &out.Masters
-		*out = make([]RedisMember, len(*in))
-		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
-		}
+		*out = make([]string, len(*in))
+		copy(*out, *in)
 	}
 	return
 }

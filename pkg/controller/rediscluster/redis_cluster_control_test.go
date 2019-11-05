@@ -116,7 +116,7 @@ func TestRedisControlUpdateRedis(t *testing.T) {
 		{
 			name: "normal",
 			update: func(redi *v1alpha1.RedisCluster) {
-				redi.Status.Redis.Masters[0] = v1alpha1.RedisMember{Name: "demo-redis-0", ID: "dd"}
+				redi.Status.Redis.Masters[0] = "demo-redis-0"
 				redi.Status.Redis.StatefulSet = &apps.StatefulSetStatus{ReadyReplicas: 2}
 			},
 			syncReclaimPolicyErr:             false,
