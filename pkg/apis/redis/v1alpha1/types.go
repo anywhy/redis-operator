@@ -93,14 +93,9 @@ type ServerSpec struct {
 
 // SentinelSpec redis sentinel attributes
 type SentinelSpec struct {
-	PodAttributesSpec
-
-	Enable     bool   `json:"enable,omitempty"`
-	Replicas   int32  `json:"replicas,omitempty"`
-	MasterName string `json:"masterName,omitempty"`
-	Password   string `json:"password,omitempty"`
-
-	StorageClassName string `json:"storageClassName,omitempty"`
+	Enable   bool   `json:"enable,omitempty"`
+	Replicas int32  `json:"replicas,omitempty"`
+	Password string `json:"password,omitempty"`
 
 	Requests *ResourceRequirement `json:"requests,omitempty"`
 	Limits   *ResourceRequirement `json:"limits,omitempty"`

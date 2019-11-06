@@ -9,8 +9,8 @@ metadata:
     app.kubernetes.io/component: redis-cluster
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+"  "_" }}
 spec:
-  pvReclaimPolicy: {{ .Values.pvReclaimPolicy }}
   mode: {{.Values.redis.mode | default "replica"}}
+  pvReclaimPolicy: {{ .Values.pvReclaimPolicy }}
   services:
 {{ toYaml .Values.services | indent 4 }}
   schedulerName: {{ .Values.schedulerName | default "default-scheduler" }}
@@ -38,20 +38,11 @@ spec:
 {{- if ((eq .Values.redis.mode "replica") and (gt .Values.redis.members 2)) and (eq .Values.sentinel.enable true) }}
   sentinel:
     enable: {{ .Values.sentinel.enable | default false }}
-    masterName: {{ .Values.sentinel.masterName | default (printf (.Values.clusterName)) }}
     replicas: {{ .Values.sentinel.replicas | default 3 }}
   {{- if .Values.sentinel.resources }}
 {{ toYaml .Values.sentinel.resources | indent 4 }}
   {{- end }}
   {{- if .Values.sentinel.password }}
     password: {{ .Values.sentinel.password }}
-  {{- end }}
-  {{- if .Values.redis.nodeSelector }}
-    nodeSelector:
-{{ toYaml .Values.redis.nodeSelector | indent 6 }}
-  {{- end }}
-  {{- if .Values.redis.tolerations }}
-    tolerations:
-{{ toYaml .Values.redis.tolerations | indent 4 }}
   {{- end }}
  {{- end }}  

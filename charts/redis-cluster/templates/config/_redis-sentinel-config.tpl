@@ -79,7 +79,7 @@ dir /data
 #
 # Note: master name should not include special characters or spaces.
 # The valid charset is A-z 0-9 and the three characters ".-_".
-sentinel monitor {{ .Values.sentinel.masterName | default (printf (.Values.clusterName)) }} {{ .Values.clusterName }}-redis-master-peer.{{ .Release.Namespace }}.svc 6379 2
+sentinel monitor {{ (printf (.Values.clusterName)) }} {{ .Values.clusterName }}-redis-master-peer.{{ .Release.Namespace }}.svc 6379 2
 
 # sentinel auth-pass <master-name> <password>
 #
@@ -96,7 +96,7 @@ sentinel monitor {{ .Values.sentinel.masterName | default (printf (.Values.clust
 # the AUTH command will have no effect in Redis instances with authentication
 # switched off.
 {{ if .Values.sentinel.masterAuth }}
-sentinel auth-pass {{ .Values.sentinel.masterName | default (printf (.Values.clusterName)) }} {{ .Values.sentinel.masterAuth }}
+sentinel auth-pass {{ .Values.clusterName }} {{ .Values.sentinel.password }}
 {{ end }}
 
 # sentinel down-after-milliseconds <master-name> <milliseconds>
@@ -107,7 +107,7 @@ sentinel auth-pass {{ .Values.sentinel.masterName | default (printf (.Values.clu
 # Down).
 #
 # Default is 30 seconds.
-sentinel down-after-milliseconds {{ .Values.sentinel.masterName | default (printf (.Values.clusterName)) }} 30000
+sentinel down-after-milliseconds {{ .Values.clusterName }} 30000
 
 # sentinel parallel-syncs <master-name> <numreplicas>
 #
@@ -115,7 +115,7 @@ sentinel down-after-milliseconds {{ .Values.sentinel.masterName | default (print
 # during the failover. Use a low number if you use the replicas to serve query
 # to avoid that all the replicas will be unreachable at about the same
 # time while performing the synchronization with the master.
-sentinel parallel-syncs {{ .Values.sentinel.masterName | default (printf (.Values.clusterName)) }} 1
+sentinel parallel-syncs {{ .Values.clusterName }} 1
 
 # sentinel failover-timeout <master-name> <milliseconds>
 #
@@ -140,7 +140,7 @@ sentinel parallel-syncs {{ .Values.sentinel.masterName | default (printf (.Value
 #   the exact parallel-syncs progression as specified.
 #
 # Default is 3 minutes.
-sentinel failover-timeout {{ .Values.sentinel.masterName | default (printf (.Values.clusterName)) }} 180000
+sentinel failover-timeout {{ .Values.clusterName }} 180000
 
 # SCRIPTS EXECUTION
 #
