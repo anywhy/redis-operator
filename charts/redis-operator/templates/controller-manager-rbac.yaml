@@ -39,8 +39,8 @@ rules:
 - apiGroups: ["apps"]
   resources: ["statefulsets"]
   verbs: ["*"]
-- apiGroups: ["anywhy.github"]
-  resources: ["redises"]
+- apiGroups: ["anywhy.github.io"]
+  resources: ["redisclusters"]
   verbs: ["*"]
 {{- end }}
 - apiGroups: [""]
@@ -98,8 +98,8 @@ rules:
 - apiGroups: ["apps"]
   resources: ["statefulsets"]
   verbs: ["*"]
-- apiGroups: ["anywhy.github"]
-  resources: ["redises"]
+- apiGroups: ["anywhy.github.io"]
+  resources: ["redisclusters"]
   verbs: ["*"]
 ---
 kind: RoleBinding

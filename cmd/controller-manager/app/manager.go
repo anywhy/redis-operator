@@ -36,7 +36,7 @@ func NewRedisControllerManagerCommand() *cobra.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			return Run(opts, ctx)
+			return Run(ctx, opts)
 		},
 	}
 
@@ -47,7 +47,7 @@ func NewRedisControllerManagerCommand() *cobra.Command {
 }
 
 //Run starts the redis-operator controllers. This should never exit.
-func Run(s *options.RedisControllerManagerOptions, ctx context.Context) error {
+func Run(ctx context.Context, s *options.RedisControllerManagerOptions) error {
 	version.LogVersionInfo()
 
 	ns := os.Getenv("NAMESPACE")

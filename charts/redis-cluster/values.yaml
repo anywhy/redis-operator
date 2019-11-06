@@ -23,7 +23,7 @@ pvReclaimPolicy: Retain
 # services is the service list to expose, default is ClusterIP
 # can be ClusterIP | NodePort | LoadBalancer
 services:
-  - name: redis
+  - name: master
     type: ClusterIP
 
 redis:
@@ -69,7 +69,7 @@ redis:
 
 # Replica cluster sentinel
 sentinel:
-  enable: true
+  enable: false
   # storageClassName is a StorageClass provides a way for administrators to describe the "classes" of storage they offer.
   # different classes might map to quality-of-service levels, or to backup policies,
   # or to arbitrary policies determined by the cluster administrators.
@@ -95,5 +95,5 @@ sentinel:
   tolerations: {}
   # - key: node-role
   #   operator: Equal
-  #   value: tidb
+  #   value: redis
   #   effect: "NoSchedule"

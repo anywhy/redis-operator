@@ -82,8 +82,8 @@ type ServerSpec struct {
 
 	PodAttributesSpec
 
-	// The number of cluster members
-	Replicas int32 `json:"members"`
+	// The number of cluster replicas
+	Replicas int32 `json:"replicas"`
 
 	StorageClassName string `json:"storageClassName,omitempty"`
 
@@ -108,7 +108,7 @@ type SentinelSpec struct {
 
 // RedisClusterStatus represents the current status of a redis cluster.
 type RedisClusterStatus struct {
-	Redis    ServerStatus   `json:"replica,omitempty"`
+	Redis    ServerStatus   `json:"redis,omitempty"`
 	Sentinel SentinelStatus `json:"sentinel,omitempty"`
 }
 
@@ -163,7 +163,8 @@ type ServerStatus struct {
 	StatefulSet    *apps.StatefulSetStatus       `json:"statefulset,omitempty"`
 	Members        map[string]RedisMember        `json:"members,omitempty"`
 	FailureMembers map[string]RedisFailureMember `json:"failureMembers,omitempty"`
-	Masters        []RedisMember                 `json:"masters,omitempty"`
+	Masters        []string                      `json:"masters,omitempty"`
+	Synced         bool                          `json:"synced,omitempty"`
 }
 
 // RedisFailureMember is the redis cluster failure member information

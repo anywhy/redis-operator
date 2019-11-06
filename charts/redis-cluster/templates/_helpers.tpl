@@ -33,11 +33,13 @@ config-file: |-
     {{- if .Values.redis.config }}
 {{ .Values.redis.config | indent 2 }}
     {{- end -}}
-{{- if ((.Values.redis.mode) and (eq .Values.redis.mode "replica")) }}
+    {{- if ((.Values.redis.mode) and (eq .Values.redis.mode "replica")) }}
 sentinel-config-file: |-
-    {{- if .Values.sentinel.config }}
+        {{- if .Values.sentinel.config }}
 {{ .Values.sentinel.config | indent 4 }}
-    {{- else }}
+        {{- else }}
 {{ tuple "config/_redis-sentinel-config.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+        {{- end -}}
     {{- end -}}
+
 {{- end -}}

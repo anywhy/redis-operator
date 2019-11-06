@@ -23,8 +23,7 @@ source ${ANNOTATIONS} 2>/dev/null
 ROLE_NAME=${ROLE_NAME:-master}
 
 # the general form of variable PEER_MASTER_SERVICE_NAME is: "<clusterName>-master-peer"
-cluster_name=`echo ${PEER_MASTER_SERVICE_NAME} | sed 's/-master-peer//'`
-master_url=${cluster_name}.${NAMESPACE}.svc:6379"
+master_url="${PEER_MASTER_SERVICE_NAME}.${NAMESPACE}.svc 6379"
 
 elapseTime=0
 period=1
@@ -54,4 +53,4 @@ fi
 
 echo "starting redis-server ..."
 echo "redis-server ${ARGS}"
-exec redis-server ${ARGS} 
+exec redis-server ${ARGS}

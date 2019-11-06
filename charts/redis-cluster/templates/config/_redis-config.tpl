@@ -836,7 +836,7 @@ lua-time-limit 5000
 # cluster node enable the cluster support uncommenting the following:
 #
 # cluster-enabled yes
-{{ if  if ((.Values.redis.mode) and (eq .Values.redis.mode "cluster")  }}
+{{ if ((.Values.redis.mode) and (eq .Values.redis.mode "cluster"))  }}
 cluster-enabled yes
 {{ end }}
 

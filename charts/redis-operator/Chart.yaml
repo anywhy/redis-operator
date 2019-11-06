@@ -8,4 +8,5 @@ sources:
 keywords:
   - operator
   - redis
+  - rediscluster
   - kv

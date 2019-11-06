@@ -71,14 +71,7 @@ func (rpc *realPodControl) UpdatePod(rc *v1alpha1.RedisCluster, pod *corev1.Pod)
 		return pod, fmt.Errorf("pod %s/%s doesn't have %s label, Redis: %s", ns,
 			pod.Name, label.InstanceLabelKey, rcName)
 	}
-
-	// if replica cluster set component slave role
-	if rc.Spec.Mode == v1alpha1.Cluster {
-		if _, ok := labels[label.ComponentLabelKey]; !ok {
-			labels[label.ComponentLabelKey] = label.SlaveNodeLabelKey
-		}
-	}
-
+	
 	var updatePod *corev1.Pod
 	// don't wait due to limited number of clients, but backoff after the default number of steps
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {

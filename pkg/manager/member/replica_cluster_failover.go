@@ -53,7 +53,7 @@ func (rf *replicaFailover) Failover(rc *v1alpha1.RedisCluster) {
 					return err
 				}
 				glog.Infof("Replica cluster HA switch: %v to master", podCopy.Name)
-				rc.Status.Redis.Masters[0].Name = pod.GetName()
+				rc.Status.Redis.Masters[0] = pod.GetName()
 			} else if !strings.EqualFold(master, addr) && pod.Labels[label.ClusterNodeRoleLabelKey] == label.MasterNodeLabelKey {
 				podCopy := pod.DeepCopy()
 				podCopy.Labels[label.ClusterNodeRoleLabelKey] = label.SlaveNodeLabelKey

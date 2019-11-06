@@ -15,7 +15,7 @@ import (
 // Currently, there is only one implementation.
 type ControlInterface interface {
 	// UpdateRedis implements the control logic for StatefulSet creation, update, and deletion
-	UpdateRedis(*v1alpha1.RedisCluster) error
+	UpdateRedisCluster(*v1alpha1.RedisCluster) error
 }
 
 type defaultRedisControl struct {
@@ -47,7 +47,7 @@ func NewDefaultRedisControl(
 }
 
 // UpdateRedis executes the core logic loop for a Redis.
-func (rcc *defaultRedisControl) UpdateRedis(rc *v1alpha1.RedisCluster) error {
+func (rcc *defaultRedisControl) UpdateRedisCluster(rc *v1alpha1.RedisCluster) error {
 	var errs []error
 	oldStatus := rc.Status.DeepCopy()
 
@@ -88,8 +88,8 @@ func (rcc *defaultRedisControl) updateReplicaCluster(rc *v1alpha1.RedisCluster) 
 	//  - create or update the master/slave headless service
 	//  - create the replica statefulset
 	//  - sync replica cluster status to Redis object
-	//  - set one annotations to the master replica cluster member:
-	// 		- label.ComponentLabelKey
+	//  - build replica cluster member and set master role node, slave role node:
+	// 		- label.ClusterNodeRoleLabelKey
 	//   - upgrade the replica cluster
 	//   - scale out/in the replica cluster
 	if err := rcc.replicaMemberManager.Sync(rc); err != nil {
