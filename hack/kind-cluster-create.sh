@@ -202,7 +202,7 @@ spec:
 EOF
 kubectl apply -f ${registryFile}
 
-echo "init tidb-operator env"
+echo "init redis-operator env"
 kubectl apply -f ${ROOT}/manifests/local-dind/local-volume-provisioner.yaml
 kubectl apply -f ${ROOT}/manifests/tiller-rbac.yaml
 kubectl apply -f ${ROOT}/manifests/crd.yaml

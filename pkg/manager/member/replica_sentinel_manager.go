@@ -247,10 +247,6 @@ func (smm *sentinelMemberManager) sentinelIsUpgrading(set *apps.StatefulSet, rc 
 	return false, nil
 }
 
-const sentinelCmd = `
-redis-server /etc/redis/sentinel.conf --sentinel
-`
-
 func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.RedisCluster) (*apps.StatefulSet, error) {
 	ns, rcName := rc.GetNamespace(), rc.GetName()
 	redisConfigMap := controller.RedisMemberName(rcName)
@@ -259,12 +255,11 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.RedisCl
 	volMounts := []corev1.VolumeMount{
 		podMount,
 		{Name: v1alpha1.SentinelMemberType.String(), MountPath: "/data"},
-		{Name: "configmap", MountPath: "/configmap"},
-		{Name: "sentinelconfig", MountPath: "/etc/redis"},
+		{Name: "config", ReadOnly: true, MountPath: "/etc/redis"},
 	}
 	vols := []corev1.Volume{
 		podVolume,
-		{Name: "configmap",
+		{Name: "config",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -272,12 +267,6 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.RedisCl
 					},
 					Items: []corev1.KeyToPath{{Key: "sentinel-config-file", Path: "sentinel.conf"}},
 				},
-			},
-		},
-		{
-			Name: "sentinelconfig",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
 	}
@@ -293,6 +282,11 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.RedisCl
 	pvc, err := smm.volumeClaimTemplate(rc, &storageClassName)
 	if err != nil {
 		return nil, err
+	}
+
+	dnsPolicy := corev1.DNSClusterFirst // same as k8s defaults
+	if rc.Spec.Redis.HostNetwork {
+		dnsPolicy = corev1.DNSClusterFirstWithHostNet
 	}
 
 	sentiSet := &apps.StatefulSet{
@@ -313,26 +307,18 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.RedisCl
 					Annotations: controller.AnnProm(2379),
 				},
 				Spec: corev1.PodSpec{
-					Affinity: util.AffinityForNodeSelector(ns,
-						true, sentiLabel.Labels(),
-						rc.Spec.Redis.NodeSelector),
-					InitContainers: []corev1.Container{
-						{
-							Name:  "copy-config",
-							Image: "busybox:latest",
-							Command: []string{
-								"sh", "-c", "cp /configmap/* /etc/redis",
-							},
-							VolumeMounts: volMounts,
-						},
-					},
+					SchedulerName: rc.Spec.SchedulerName,
+					Affinity:      rc.Spec.Redis.Affinity,
+					NodeSelector:  rc.Spec.Redis.NodeSelector,
+					HostNetwork:   rc.Spec.Redis.HostNetwork,
+					DNSPolicy:     dnsPolicy,
 					Containers: []corev1.Container{
 						{
-							Name:            "redis-sentinel",
+							Name:            "sentinel",
 							Image:           rc.Spec.Redis.Image,
 							ImagePullPolicy: rc.Spec.Redis.ImagePullPolicy,
 							Command: []string{
-								"bash", "-c", sentinelCmd,
+								"bash", "-c", "redis-server /etc/redis/sentinel.conf --sentinel",
 							},
 							Ports: []corev1.ContainerPort{
 								{
@@ -356,7 +342,7 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.RedisCl
 					},
 					Volumes:       vols,
 					RestartPolicy: corev1.RestartPolicyAlways,
-					Tolerations:   rc.Spec.Sentinel.Tolerations,
+					Tolerations:   rc.Spec.Redis.Tolerations,
 				},
 			},
 			ServiceName:         controller.SentinelPeerMemberName(rcName),
