@@ -164,6 +164,7 @@ type ServerStatus struct {
 	Members        map[string]RedisMember        `json:"members,omitempty"`
 	FailureMembers map[string]RedisFailureMember `json:"failureMembers,omitempty"`
 	Masters        []string                      `json:"masters,omitempty"`
+	Synced         bool                          `json:"synced,omitempty"`
 }
 
 // RedisFailureMember is the redis cluster failure member information

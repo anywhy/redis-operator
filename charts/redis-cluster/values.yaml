@@ -23,7 +23,7 @@ pvReclaimPolicy: Retain
 # services is the service list to expose, default is ClusterIP
 # can be ClusterIP | NodePort | LoadBalancer
 services:
-  - name: redis
+  - name: master
     type: ClusterIP
 
 redis:
@@ -95,5 +95,5 @@ sentinel:
   tolerations: {}
   # - key: node-role
   #   operator: Equal
-  #   value: tidb
+  #   value: redis
   #   effect: "NoSchedule"

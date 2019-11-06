@@ -72,7 +72,7 @@ func NewReplicaMemberManager(
 // Sync	implements redis logic for syncing Redis.
 func (rmm *replicaMemberManager) Sync(rc *v1alpha1.RedisCluster) error {
 	svcList := []ServiceConfig{{
-		Name:     "redis-master",
+		Name:     "master",
 		Port:     6379,
 		SvcLabel: func(l label.Label) label.Label { return l.Master() },
 		MemberName: func(clusterName string) string {
@@ -81,7 +81,7 @@ func (rmm *replicaMemberManager) Sync(rc *v1alpha1.RedisCluster) error {
 		Headless: false,
 	},
 		{
-			Name:     "redis-master-peer",
+			Name:     "master-peer",
 			Port:     6379,
 			SvcLabel: func(l label.Label) label.Label { return l.Master() },
 			MemberName: func(clusterName string) string {
@@ -93,7 +93,7 @@ func (rmm *replicaMemberManager) Sync(rc *v1alpha1.RedisCluster) error {
 
 	if rc.Spec.Mode == v1alpha1.Replica && rc.Spec.Redis.Replicas > 1 {
 		slaveSvcList := []ServiceConfig{{
-			Name:     "redis-salve",
+			Name:     "salve",
 			Port:     6379,
 			SvcLabel: func(l label.Label) label.Label { return l.Slave() },
 			MemberName: func(clusterName string) string {
@@ -284,14 +284,15 @@ func (rmm *replicaMemberManager) getNewRedisServiceForRedis(rc *v1alpha1.RedisCl
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
-			Selector: rediLabel,
+			Selector:                 rediLabel,
+			PublishNotReadyAddresses: true,
 		},
 	}
 
 	if svcConfig.Headless {
 		svc.Spec.ClusterIP = "None"
 	} else {
-		svc.Spec.Type = controller.GetServiceType(rc.Spec.Services, v1alpha1.RedisMemberType.String())
+		svc.Spec.Type = controller.GetServiceType(rc.Spec.Services, svcConfig.Name)
 	}
 
 	return svc
@@ -301,6 +302,7 @@ func (rmm *replicaMemberManager) syncReplicaStatefulSetStatus(rc *v1alpha1.Redis
 	rc.Status.Redis.StatefulSet = &set.Status
 	upgrading, err := rmm.replicaIsUpgrading(set, rc)
 	if err != nil {
+		rc.Status.Redis.Synced = false
 		return err
 	}
 	if upgrading {
@@ -312,10 +314,12 @@ func (rmm *replicaMemberManager) syncReplicaStatefulSetStatus(rc *v1alpha1.Redis
 	instanceName := rc.GetLabels()[label.InstanceLabelKey]
 	selector, err := label.New().Instance(instanceName).Redis().ReplicaMode().Selector()
 	if err != nil {
+		rc.Status.Redis.Synced = false
 		return err
 	}
 	pods, err := rmm.podLister.Pods(rc.GetNamespace()).List(selector)
 	if err != nil && !apierrors.IsNotFound(err) {
+		rc.Status.Redis.Synced = false
 		return err
 	}
 
@@ -341,6 +345,7 @@ func (rmm *replicaMemberManager) syncReplicaStatefulSetStatus(rc *v1alpha1.Redis
 
 	rc.Status.Redis.Members = rediStatus
 	rc.Status.Redis.Masters = masters
+	rc.Status.Redis.Synced = true
 
 	return nil
 }
@@ -489,6 +494,7 @@ func (rmm *replicaMemberManager) getNewReplicaStatefulSet(rc *v1alpha1.RedisClus
 					Tolerations:   rc.Spec.Redis.Tolerations,
 				},
 			},
+			ServiceName:         controller.RedisMemberName(rcName),
 			PodManagementPolicy: apps.ParallelPodManagement,
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 				pvc,
