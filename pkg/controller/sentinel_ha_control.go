@@ -110,7 +110,7 @@ func (hac *defaultHAControl) Watch(rc *v1alpha1.RedisCluster, callback func(mast
 	key := haClientKey(ns, rcName)
 	if _, ok := hac.haClients[key]; !ok {
 		hac.haClients[key] = &haWatcher{
-			monitor: redis.NewSentinel(rc.Spec.Sentinel.MasterName, rc.Spec.Sentinel.Password),
+			monitor: redis.NewSentinel(rc.GetName(), rc.Spec.Sentinel.Password),
 			wtached: false,
 		}
 	}

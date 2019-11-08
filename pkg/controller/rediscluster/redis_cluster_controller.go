@@ -102,9 +102,14 @@ func NewController(
 				setInformer.Lister(),
 				replicaScaler,
 				replicaUpgrader,
-				autoFailover,
 				replicaFailover),
-			nil,
+			mm.NewSentinelMemberManager(
+				setControl,
+				svcControl,
+				svcInformer.Lister(),
+				podInformer.Lister(),
+				setInformer.Lister()),
+			nil, // rediscluster controller
 			meta.NewReclaimPolicyManager(
 				pvcInformer.Lister(),
 				pvInformer.Lister(),

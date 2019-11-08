@@ -218,7 +218,6 @@ func newFakeRedisController() (*Controller, cache.Indexer, cache.Indexer) {
 	replicaScaler := mm.NewFakeReplicaScaler()
 	replicaUpgrader := mm.NewFakeReplicaUpgraderr()
 	replicaFailover := mm.NewFakeReplicaFailover()
-	autoFailover := false
 
 	rcc := NewController(
 		kubeCli,
@@ -239,8 +238,13 @@ func newFakeRedisController() (*Controller, cache.Indexer, cache.Indexer) {
 			setInformer.Lister(),
 			replicaScaler,
 			replicaUpgrader,
-			autoFailover,
 			replicaFailover),
+		mm.NewSentinelMemberManager(
+			setControl,
+			svcControl,
+			svcInformer.Lister(),
+			podInformer.Lister(),
+			setInformer.Lister()),
 		nil,
 		meta.NewReclaimPolicyManager(
 			pvcInformer.Lister(),

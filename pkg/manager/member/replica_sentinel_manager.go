@@ -7,7 +7,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	appslisters "k8s.io/client-go/listers/apps/v1beta1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 
@@ -44,11 +43,7 @@ func NewSentinelMemberManager(
 
 // Sync	implements sentinel logic for syncing Redis.
 func (smm *sentinelMemberManager) Sync(rc *v1alpha1.RedisCluster) error {
-	if rc.Spec.Mode == v1alpha1.Cluster {
-		// Sync sentinel service
-		if err := smm.syncSentinelServiceForRedis(rc); err != nil {
-			return err
-		}
+	if rc.Spec.Mode == v1alpha1.Replica {
 		return smm.syncSentinelStatefulSetForRedis(rc)
 	}
 	return nil
@@ -76,7 +71,8 @@ func (smm *sentinelMemberManager) syncSentinelStatefulSetForRedis(rc *v1alpha1.R
 		return controller.RequeueErrorf("Redis: [%s/%s], waiting for replica sentinel running", ns, rcName)
 	}
 
-	if err = smm.syncRedisStatus(rc, oldSentiSet); err != nil {
+	// sync status
+	if err = smm.syncSentinelClusterStatus(rc, oldSentiSet); err != nil {
 		glog.Errorf("failed to sync Redis: [%s/%s]'s status, error: %v", ns, rcName, err)
 	}
 
@@ -110,67 +106,7 @@ func (smm *sentinelMemberManager) syncSentinelStatefulSetForRedis(rc *v1alpha1.R
 	return nil
 }
 
-func (smm *sentinelMemberManager) syncSentinelServiceForRedis(rc *v1alpha1.RedisCluster) error {
-	svcList := []ServiceConfig{
-		// {
-		// 	Name:       "sentinel",
-		// 	Port:       16379,
-		// 	SvcLabel:   func(l label.Label) label.Label { return l.Sentinel() },
-		// 	MemberName: controller.SentinelMemberName,
-		// 	Headless:   false,
-		// },
-		{
-			Name:       "peer",
-			Port:       16379,
-			SvcLabel:   func(l label.Label) label.Label { return l.Sentinel() },
-			MemberName: controller.SentinelPeerMemberName,
-			Headless:   true,
-		},
-	}
-
-	for _, svc := range svcList {
-		if err := smm.syncSentinelService(rc, svc); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (smm *sentinelMemberManager) syncSentinelService(rc *v1alpha1.RedisCluster, svcConfig ServiceConfig) error {
-	ns, rcName := rc.GetNamespace(), rc.GetName()
-
-	newSvc := smm.getNewSentinelServiceForRedis(rc, svcConfig)
-	oldSvc, err := smm.svcLister.Services(ns).Get(svcConfig.MemberName(rcName))
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			err := setServiceLastAppliedConfigAnnotation(newSvc)
-			if err != nil {
-				return err
-			}
-			return smm.svcControl.CreateService(rc, newSvc)
-		}
-		return err
-	}
-
-	if ok, err := serviceEqual(newSvc, oldSvc); err != nil {
-		return err
-	} else if !ok {
-		svc := *oldSvc
-		svc.Spec = newSvc.Spec
-		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
-		if err = setServiceLastAppliedConfigAnnotation(&svc); err != nil {
-			return err
-		}
-
-		_, err := smm.svcControl.UpdateService(rc, &svc)
-		return err
-	}
-
-	return nil
-}
-
-func (smm *sentinelMemberManager) syncRedisStatus(rc *v1alpha1.RedisCluster, set *apps.StatefulSet) error {
+func (smm *sentinelMemberManager) syncSentinelClusterStatus(rc *v1alpha1.RedisCluster, set *apps.StatefulSet) error {
 	rc.Status.Sentinel.StatefulSet = &set.Status
 	upgrading, err := smm.sentinelIsUpgrading(set, rc)
 	if err != nil {
@@ -183,41 +119,6 @@ func (smm *sentinelMemberManager) syncRedisStatus(rc *v1alpha1.RedisCluster, set
 	}
 
 	return nil
-}
-
-func (smm *sentinelMemberManager) getNewSentinelServiceForRedis(rc *v1alpha1.RedisCluster, svcConfig ServiceConfig) *corev1.Service {
-	ns, rcName := rc.Namespace, rc.Name
-
-	svcName := svcConfig.MemberName(rcName)
-	instanceName := rc.GetLabels()[label.InstanceLabelKey]
-	rediLabel := svcConfig.SvcLabel(label.New().Instance(instanceName).ReplicaMode().Sentinel()).Labels()
-	svc := &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            svcName,
-			Namespace:       ns,
-			Labels:          rediLabel,
-			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(rc)},
-		},
-		Spec: corev1.ServiceSpec{
-			Ports: []corev1.ServicePort{
-				{
-					Name:       svcConfig.Name,
-					Port:       svcConfig.Port,
-					TargetPort: intstr.FromInt(int(svcConfig.Port)),
-					Protocol:   corev1.ProtocolTCP,
-				},
-			},
-			Selector: rediLabel,
-		},
-	}
-
-	if svcConfig.Headless {
-		svc.Spec.ClusterIP = "None"
-	} else {
-		svc.Spec.Type = controller.GetServiceType(rc.Spec.Services, v1alpha1.SentinelMemberType.String())
-	}
-
-	return svc
 }
 
 func (smm *sentinelMemberManager) sentinelIsUpgrading(set *apps.StatefulSet, rc *v1alpha1.RedisCluster) (bool, error) {

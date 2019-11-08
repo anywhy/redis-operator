@@ -29,7 +29,6 @@ type replicaMemberManager struct {
 	podControl      controller.PodControlInterface
 	redisScaler     Scaler
 	replicaUpgrader Upgrader
-	autoFailover    bool
 	replicaFailover Failover
 }
 
@@ -52,7 +51,6 @@ func NewReplicaMemberManager(
 	setLister appslisters.StatefulSetLister,
 	redisScaler Scaler,
 	replicaUpgrader Upgrader,
-	autoFailover bool,
 	replicaFailover Failover) manager.Manager {
 	rmm := &replicaMemberManager{
 		setControl:      setControl,
@@ -63,7 +61,6 @@ func NewReplicaMemberManager(
 		setLister:       setLister,
 		redisScaler:     redisScaler,
 		replicaUpgrader: replicaUpgrader,
-		autoFailover:    autoFailover,
 		replicaFailover: replicaFailover,
 	}
 	return rmm
@@ -197,12 +194,6 @@ func (rmm *replicaMemberManager) syncStatefulSetForReplicaRedis(rc *v1alpha1.Red
 	if *newSet.Spec.Replicas < *oldSet.Spec.Replicas {
 		if err := rmm.redisScaler.ScaleIn(rc, newSet, oldSet); err != nil {
 			return err
-		}
-	}
-
-	if rmm.autoFailover {
-		if rc.RedisAllPodsStarted() {
-			// TODO auto failover
 		}
 	}
 
