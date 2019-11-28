@@ -59,11 +59,6 @@ func GetOwnerRef(rc *v1alpha1.RedisCluster) metav1.OwnerReference {
 	}
 }
 
-// IsEnableHA sentinel is enable
-func IsEnableHA(rc *v1alpha1.RedisCluster) bool {
-	return rc.Spec.Sentinel.Enable && rc.Spec.Redis.Replicas > 1
-}
-
 // AnnProm adds annotations for prometheus scraping metrics
 func AnnProm(port int32) map[string]string {
 	return map[string]string{

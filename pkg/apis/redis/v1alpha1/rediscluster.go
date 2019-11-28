@@ -9,15 +9,15 @@ func (rc *RedisCluster) ReplicaUpgrading() bool {
 	return rc.Status.Redis.Phase == UpgradePhase
 }
 
-// SentinelIsOk sentinel is ok
-func (rc *RedisCluster) SentinelIsOk() bool {
+// AllSentinelPodsStarted sentinel is ok
+func (rc *RedisCluster) AllSentinelPodsStarted() bool {
 	sentSet := rc.Status.Sentinel.StatefulSet
 	return sentSet.Replicas == sentSet.ReadyReplicas
 }
 
-// IsEnableSentinel sentinel is enable
-func (rc *RedisCluster) IsEnableSentinel() bool {
-	return rc.Spec.Sentinel.Enable
+// ShoudEnableSentinel sentinel is enable
+func (rc *RedisCluster) ShoudEnableSentinel() bool {
+	return rc.Spec.Sentinel.Replicas > 0 && rc.Spec.Redis.Replicas > 1
 }
 
 // RedisRealReplicas redis real replicas

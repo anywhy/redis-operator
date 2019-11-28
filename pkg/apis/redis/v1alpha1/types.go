@@ -93,7 +93,6 @@ type ServerSpec struct {
 
 // SentinelSpec redis sentinel attributes
 type SentinelSpec struct {
-	Enable   bool   `json:"enable,omitempty"`
 	Replicas int32  `json:"replicas,omitempty"`
 	Password string `json:"password,omitempty"`
 
@@ -172,4 +171,5 @@ type RedisFailureMember struct {
 type SentinelStatus struct {
 	Phase       MemberPhase             `json:"phase,omitempty"`
 	StatefulSet *apps.StatefulSetStatus `json:"statefulset,omitempty"`
+	Subscribed  bool                    `json:"subscribed,omitempty"`
 }

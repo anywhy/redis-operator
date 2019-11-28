@@ -22,6 +22,9 @@ source ${ANNOTATIONS} 2>/dev/null
 # Default ROLE
 ROLE_NAME=${ROLE_NAME:-master}
 
+ARGS=/etc/redis/redis.conf
+
+{{- if (eq .Values.redis.mode "replica") }}
 # the general form of variable PEER_MASTER_SERVICE_NAME is: "<clusterName>-master-peer"
 master_url="${PEER_MASTER_SERVICE_NAME}.${NAMESPACE}.svc 6379"
 
@@ -45,11 +48,10 @@ while true; do
 	
 done
 
-ARGS=/etc/redis/redis.conf
-
 if [[ X${ROLE_NAME} != Xmaster ]]; then
 	ARGS="${ARGS} --slaveof ${master_url}"
 fi
+{{- end }}
 
 echo "starting redis-server ..."
 echo "redis-server ${ARGS}"

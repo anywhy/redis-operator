@@ -197,7 +197,6 @@ func newFakeReplicaMemberManager() (*replicaMemberManager, *controller.FakeState
 
 	replicaScaler := NewFakeReplicaScaler()
 	replicaUpgrader := NewFakeReplicaUpgraderr()
-	replicaFailover := NewFakeReplicaFailover()
 
 	return &replicaMemberManager{
 		setControl,
@@ -208,7 +207,6 @@ func newFakeReplicaMemberManager() (*replicaMemberManager, *controller.FakeState
 		podControl,
 		replicaScaler,
 		replicaUpgrader,
-		replicaFailover,
 	}, setControl, svcControl, podInformer.Informer().GetIndexer(), pvcInformer.Informer().GetIndexer()
 
 }
