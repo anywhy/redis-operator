@@ -60,7 +60,7 @@ logfile ""
 # For Redis Sentinel to chdir to /tmp at startup is the simplest thing
 # for the process to don't interfere with administrative tasks such as
 # unmounting filesystems.
-dir /data
+dir /tmp
 
 # sentinel monitor <master-name> <ip> <redis-port> <quorum>
 #

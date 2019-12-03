@@ -1,13 +1,15 @@
 package member
 
 import (
+	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	appslisters "k8s.io/client-go/listers/apps/v1beta1"
@@ -27,6 +29,7 @@ type sentinelMemberManager struct {
 	svcLister  corelisters.ServiceLister
 	setLister  appslisters.StatefulSetLister
 	podLister  corelisters.PodLister
+	podControl controller.PodControlInterface
 }
 
 // NewSentinelMemberManager new redis sentinel manager
@@ -35,12 +38,14 @@ func NewSentinelMemberManager(
 	svcControl controller.ServiceControlInterface,
 	svcLister corelisters.ServiceLister,
 	podLister corelisters.PodLister,
+	podControl controller.PodControlInterface,
 	setLister appslisters.StatefulSetLister) manager.Manager {
 	return &sentinelMemberManager{
 		setControl: setControl,
 		svcControl: svcControl,
 		svcLister:  svcLister,
 		podLister:  podLister,
+		podControl: podControl,
 		setLister:  setLister,
 	}
 }
@@ -49,8 +54,8 @@ func NewSentinelMemberManager(
 func (smm *sentinelMemberManager) Sync(rc *v1alpha1.RedisCluster) error {
 	if rc.Spec.Mode == v1alpha1.Replica && rc.ShoudEnableSentinel() {
 		if err := smm.syncSentinelService(rc, ServiceConfig{
-			Name:     "sentinel",
-			Port:     16379,
+			Name:     "peer",
+			Port:     26379,
 			SvcLabel: func(l label.Label) label.Label { return l.Sentinel() },
 			MemberName: func(clusterName string) string {
 				return controller.SentinelPeerMemberName(clusterName)
@@ -207,45 +212,52 @@ func (smm *sentinelMemberManager) syncSubscribeSwitchMaster(rc *v1alpha1.RedisCl
 	subcribed := rc.Status.Sentinel.Subscribed
 	if !subcribed && rc.AllSentinelPodsStarted() {
 		password := rc.Spec.Sentinel.Password
+
 		sentinel := redis.NewSentinel(rc.GetClusterName(), password)
-
-		onMajoritySubscribed := func() {
-			// instanceName := rc.GetLabels()[label.InstanceLabelKey]
-			// selector, err := label.New().Instance(instanceName).Redis().ReplicaMode().Selector()
-			// if err != nil {
-			// 	glog.Errorf("Replica cluster HA switch master error: %#v", err)
-			// }
-
-			// pods, err := smm.podLister.Pods(rc.Namespace).List(selector)
-			// if err != nil {
-			// 	glog.Errorf("Replica cluster HA switch master error: %#v", err)
-			// }
-
-			// for _, pod := range pods {
-			// addr := net.JoinHostPort(pod.Status.PodIP, "6379")
-			// if strings.EqualFold(master, addr) && pod.Labels[label.ClusterNodeRoleLabelKey] != label.MasterNodeLabelKey {
-			// 	podCopy := pod.DeepCopy()
-			// 	podCopy.Labels[label.ClusterNodeRoleLabelKey] = label.MasterNodeLabelKey
-			// 	if _, err := smm.podControl.UpdatePod(rc, podCopy); err != nil {
-			// 		glog.Errorf("Replica cluster HA switch master error: %#v", err)
-			// 	}
-			// 	glog.Infof("Replica cluster HA switch: %v to master", podCopy.Name)
-			// 	rc.Status.Redis.Masters[0] = pod.GetName()
-			// } else if !strings.EqualFold(master, addr) && pod.Labels[label.ClusterNodeRoleLabelKey] == label.MasterNodeLabelKey {
-			// 	podCopy := pod.DeepCopy()
-			// 	podCopy.Labels[label.ClusterNodeRoleLabelKey] = label.SlaveNodeLabelKey
-			// 	if _, err := rf.podControl.UpdatePod(rc, podCopy); err != nil {
-			// 		glog.Errorf("Replica cluster HA switch master error: %#v", err)
-			// 	}
-			// 	glog.Infof("Replica cluster HA switch: %v to slave", podCopy.Name)
-			// }
-			// }
-		}
-
 		sentinels, err := smm.getSentinelPodsDomain(rc)
 		if err != nil {
 			return err
 		}
+
+		onMajoritySubscribed := func() {
+			instanceName := rc.GetLabels()[label.InstanceLabelKey]
+			selector, err := label.New().Instance(instanceName).Redis().ReplicaMode().Selector()
+			if err != nil {
+				glog.Errorf("Replica cluster HA switch master error: %#v", err)
+			}
+
+			// Update the pod role label of the replica cluster to achieve the goal of high availability of the cluster.
+			newMaster, err := sentinel.Master(sentinels, time.Second*30)
+			if err != nil {
+				glog.Warningf("Get Replica cluster Master error: %#v", err)
+			}
+			if newMaster != "" {
+				pods, err := smm.podLister.Pods(rc.Namespace).List(selector)
+				if err != nil {
+					glog.Errorf("Replica cluster HA switch master error: %#v", err)
+				}
+				for _, pod := range pods {
+					podCopy := pod.DeepCopy()
+					if strings.EqualFold(newMaster, podCopy.Status.PodIP) &&
+						podCopy.Labels[label.ClusterNodeRoleLabelKey] != label.MasterNodeLabelKey {
+						podCopy.Labels[label.ClusterNodeRoleLabelKey] = label.MasterNodeLabelKey
+						if _, err := smm.podControl.UpdatePod(rc, podCopy); err != nil {
+							glog.Errorf("Replica cluster HA switch master error: %#v", err)
+						}
+
+						glog.Infof("Replica cluster HA switch: %v to master", podCopy.Name)
+						rc.Status.Redis.Masters[0] = pod.GetName()
+					} else if pod.Labels[label.ClusterNodeRoleLabelKey] != label.SlaveNodeLabelKey {
+						podCopy.Labels[label.ClusterNodeRoleLabelKey] = label.SlaveNodeLabelKey
+						if _, err := smm.podControl.UpdatePod(rc, podCopy); err != nil {
+							glog.Errorf("Replica cluster HA switch slave error: %#v", err)
+						}
+						glog.Infof("Replica cluster HA switch: %v to slave", podCopy.Name)
+					}
+				}
+			}
+		}
+
 		if sentinel.Subscribe(sentinels, time.Second*30, onMajoritySubscribed) {
 			subcribed = true
 		}
@@ -290,6 +302,9 @@ func (smm *sentinelMemberManager) getNewServiceForSentinel(rc *v1alpha1.RedisClu
 	return svc
 }
 
+// start cmd
+const sentinelCmd = `cp -r /sentinel.conf /etc/redis/&&redis-server /etc/redis/sentinel.conf --sentinel`
+
 func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.RedisCluster) (*apps.StatefulSet, error) {
 	ns, rcName := rc.GetNamespace(), rc.GetName()
 	redisConfigMap := controller.RedisMemberName(rcName)
@@ -297,12 +312,12 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.RedisCl
 	podMount, podVolume := podinfoVolume()
 	volMounts := []corev1.VolumeMount{
 		podMount,
-		{Name: v1alpha1.SentinelMemberType.String(), MountPath: "/data"},
-		{Name: "config", ReadOnly: true, MountPath: "/etc/redis"},
+		{Name: v1alpha1.SentinelMemberType.String(), ReadOnly: true, MountPath: "/data"},
+		{Name: "config", MountPath: "/etc/redis"},
 	}
 	vols := []corev1.Volume{
 		podVolume,
-		{Name: "config",
+		{Name: v1alpha1.SentinelMemberType.String(),
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -312,20 +327,17 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.RedisCl
 				},
 			},
 		},
+		{
+			Name: "config",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
 	}
 
 	instanceName := rc.GetLabels()[label.InstanceLabelKey]
 	sentiLabel := label.New().Instance(instanceName).Sentinel().ReplicaMode()
 	setName := controller.SentinelMemberName(rcName)
-	storageClassName := rc.Spec.Redis.StorageClassName
-	if storageClassName == "" {
-		storageClassName = controller.DefaultStorageClassName
-	}
-
-	pvc, err := smm.volumeClaimTemplate(rc, &storageClassName)
-	if err != nil {
-		return nil, err
-	}
 
 	dnsPolicy := corev1.DNSClusterFirst // same as k8s defaults
 	if rc.Spec.Redis.HostNetwork {
@@ -360,13 +372,11 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.RedisCl
 							Name:            "sentinel",
 							Image:           rc.Spec.Redis.Image,
 							ImagePullPolicy: rc.Spec.Redis.ImagePullPolicy,
-							Command: []string{
-								"bash", "-c", "redis-server /etc/redis/sentinel.conf --sentinel",
-							},
+							Command:         []string{"bash", "-c", sentinelCmd},
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          "sentinel",
-									ContainerPort: int32(16379),
+									ContainerPort: int32(26379),
 									Protocol:      corev1.ProtocolTCP,
 								},
 							},
@@ -390,42 +400,19 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.RedisCl
 			},
 			ServiceName:         controller.SentinelPeerMemberName(rcName),
 			PodManagementPolicy: apps.ParallelPodManagement,
-			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-				pvc,
-			},
 		},
 	}
 	return sentiSet, nil
 }
 
-func (smm *sentinelMemberManager) volumeClaimTemplate(rc *v1alpha1.RedisCluster, storageClassName *string) (corev1.PersistentVolumeClaim, error) {
-	var pvc corev1.PersistentVolumeClaim
-
-	size, _ := resource.ParseQuantity("10Mi")
-	pvc = corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{Name: v1alpha1.SentinelMemberType.String()},
-		Spec: corev1.PersistentVolumeClaimSpec{
-			AccessModes: []corev1.PersistentVolumeAccessMode{
-				corev1.ReadWriteOnce,
-			},
-			StorageClassName: storageClassName,
-			Resources: corev1.ResourceRequirements{
-				Requests: corev1.ResourceList{
-					corev1.ResourceStorage: size,
-				},
-				Limits: corev1.ResourceList{
-					corev1.ResourceStorage: size,
-				},
-			},
-		},
-	}
-
-	return pvc, nil
-}
-
 func (smm *sentinelMemberManager) getSentinelPodsDomain(rc *v1alpha1.RedisCluster) ([]string, error) {
-	// TODO
-	return nil, nil
+	sentinels := []string{}
+	setName := controller.SentinelMemberName(rc.GetName())
+	for i := 0; i < int(rc.Spec.Sentinel.Replicas); i++ {
+		sentinels = append(sentinels, fmt.Sprintf("%s-%s.%s.svc:26379", setName,
+			strconv.Itoa(i), rc.GetNamespace()))
+	}
+	return sentinels, nil
 }
 
 // FakeSentinelMemberManager replica cluster member manager fake use test

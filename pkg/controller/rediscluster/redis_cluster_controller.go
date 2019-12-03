@@ -86,7 +86,6 @@ func NewController(
 
 	replicaScaler := mm.NewReplicaScaler(pvcInformer.Lister(), pvcControl)
 	replicaUpgrader := mm.NewReplicaUpgrader(podControl, podInformer.Lister())
-	replicaFailover := mm.NewReplicaFailover(controller.NewDefaultHAControl(), podInformer.Lister(), podControl)
 
 	rcc := &Controller{
 		kubeClient: kubeCli,
@@ -101,13 +100,13 @@ func NewController(
 				podControl,
 				setInformer.Lister(),
 				replicaScaler,
-				replicaUpgrader,
-				replicaFailover),
+				replicaUpgrader),
 			mm.NewSentinelMemberManager(
 				setControl,
 				svcControl,
 				svcInformer.Lister(),
 				podInformer.Lister(),
+				podControl,
 				setInformer.Lister()),
 			nil, // rediscluster controller
 			meta.NewReclaimPolicyManager(
