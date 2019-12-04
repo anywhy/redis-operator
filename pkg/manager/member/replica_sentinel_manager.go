@@ -209,11 +209,13 @@ func (smm *sentinelMemberManager) sentinelIsUpgrading(set *apps.StatefulSet, rc 
 }
 
 func (smm *sentinelMemberManager) syncSubscribeSwitchMaster(rc *v1alpha1.RedisCluster) error {
+	ns, rcName := rc.Namespace, rc.Name
+
 	subcribed := rc.Status.Sentinel.Subscribed
 	if !subcribed && rc.AllSentinelPodsStarted() {
 		password := rc.Spec.Sentinel.Password
 
-		sentinel := redis.NewSentinel(rc.GetClusterName(), password)
+		sentinel := redis.NewSentinel(rc.GetName(), password)
 		sentinels, err := smm.getSentinelPodsDomain(rc)
 		if err != nil {
 			return err
@@ -223,42 +225,49 @@ func (smm *sentinelMemberManager) syncSubscribeSwitchMaster(rc *v1alpha1.RedisCl
 			instanceName := rc.GetLabels()[label.InstanceLabelKey]
 			selector, err := label.New().Instance(instanceName).Redis().ReplicaMode().Selector()
 			if err != nil {
-				glog.Errorf("Replica cluster HA switch master error: %#v", err)
+				glog.Errorf("Redis: [%s/%s], Sentinel subscribe +switch master error: %#v", ns, rcName, err)
+				return
 			}
 
 			// Update the pod role label of the replica cluster to achieve the goal of high availability of the cluster.
 			newMaster, err := sentinel.Master(sentinels, time.Second*30)
 			if err != nil {
-				glog.Warningf("Get Replica cluster Master error: %#v", err)
+				glog.Warningf("Redis: [%s/%s], Sentinel get cluster master error: %#v", ns, rcName, err)
+				return
 			}
+			glog.Infof("Redis: [%s/%s], Sentinel get now master addr: %s", ns, rcName, newMaster)
+
 			if newMaster != "" {
 				pods, err := smm.podLister.Pods(rc.Namespace).List(selector)
 				if err != nil {
-					glog.Errorf("Replica cluster HA switch master error: %#v", err)
+					glog.Errorf("Redis: [%s/%s], Sentinel switch master error: %#v", ns, rcName, err)
+					return
 				}
 				for _, pod := range pods {
 					podCopy := pod.DeepCopy()
-					if strings.EqualFold(newMaster, podCopy.Status.PodIP) &&
+					if strings.EqualFold(newMaster, strings.Join([]string{podCopy.Status.PodIP, "6379"}, ":")) &&
 						podCopy.Labels[label.ClusterNodeRoleLabelKey] != label.MasterNodeLabelKey {
 						podCopy.Labels[label.ClusterNodeRoleLabelKey] = label.MasterNodeLabelKey
 						if _, err := smm.podControl.UpdatePod(rc, podCopy); err != nil {
-							glog.Errorf("Replica cluster HA switch master error: %#v", err)
+							glog.Errorf("Redis: [%s/%s], Sentinel switch master error: %#v", ns, rcName, err)
+						} else {
+							glog.Infof("Redis: [%s/%s], Sentinel switch: %v to master", ns, rcName, podCopy.Name)
+							rc.Status.Redis.Masters[0] = pod.GetName()
 						}
-
-						glog.Infof("Replica cluster HA switch: %v to master", podCopy.Name)
-						rc.Status.Redis.Masters[0] = pod.GetName()
 					} else if pod.Labels[label.ClusterNodeRoleLabelKey] != label.SlaveNodeLabelKey {
 						podCopy.Labels[label.ClusterNodeRoleLabelKey] = label.SlaveNodeLabelKey
 						if _, err := smm.podControl.UpdatePod(rc, podCopy); err != nil {
-							glog.Errorf("Replica cluster HA switch slave error: %#v", err)
+							glog.Errorf("Redis: [%s/%s], Sentinel switch slave error: %#v", ns, rcName, err)
+						} else {
+							glog.Infof("Redis: [%s/%s], Sentinel switch: %v to slave", ns, rcName, podCopy.Name)
 						}
-						glog.Infof("Replica cluster HA switch: %v to slave", podCopy.Name)
 					}
 				}
 			}
 		}
 
 		if sentinel.Subscribe(sentinels, time.Second*30, onMajoritySubscribed) {
+			glog.Infof("Redis: [%s/%s], Sentinel subscribe success.", ns, rcName)
 			subcribed = true
 		}
 	}
@@ -302,9 +311,6 @@ func (smm *sentinelMemberManager) getNewServiceForSentinel(rc *v1alpha1.RedisClu
 	return svc
 }
 
-// start cmd
-const sentinelCmd = `cp -r /sentinel.conf /etc/redis/&&redis-server /etc/redis/sentinel.conf --sentinel`
-
 func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.RedisCluster) (*apps.StatefulSet, error) {
 	ns, rcName := rc.GetNamespace(), rc.GetName()
 	redisConfigMap := controller.RedisMemberName(rcName)
@@ -312,12 +318,24 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.RedisCl
 	podMount, podVolume := podinfoVolume()
 	volMounts := []corev1.VolumeMount{
 		podMount,
-		{Name: v1alpha1.SentinelMemberType.String(), ReadOnly: true, MountPath: "/data"},
 		{Name: "config", MountPath: "/etc/redis"},
+		{Name: "startup-script", ReadOnly: true, MountPath: "/usr/local/sbin"},
+		{Name: "config-readonly", ReadOnly: true, MountPath: "/data/sentinel.conf",
+			SubPath: "sentinel.conf"},
 	}
 	vols := []corev1.Volume{
 		podVolume,
-		{Name: v1alpha1.SentinelMemberType.String(),
+		{Name: "startup-script",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: redisConfigMap,
+					},
+					Items: []corev1.KeyToPath{{Key: "startup-script", Path: "server_start_script.sh"}},
+				},
+			},
+		},
+		{Name: "config-readonly",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -372,7 +390,7 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.RedisCl
 							Name:            "sentinel",
 							Image:           rc.Spec.Redis.Image,
 							ImagePullPolicy: rc.Spec.Redis.ImagePullPolicy,
-							Command:         []string{"bash", "-c", sentinelCmd},
+							Command:         []string{"/bin/bash", "/usr/local/sbin/server_start_script.sh"},
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          "sentinel",
@@ -389,6 +407,10 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.RedisCl
 								{
 									Name:  "CLUSTER_NAME",
 									Value: rc.GetName(),
+								},
+								{
+									Name:  "COMPONENT",
+									Value: "sentinel",
 								},
 							},
 						},
@@ -409,8 +431,8 @@ func (smm *sentinelMemberManager) getSentinelPodsDomain(rc *v1alpha1.RedisCluste
 	sentinels := []string{}
 	setName := controller.SentinelMemberName(rc.GetName())
 	for i := 0; i < int(rc.Spec.Sentinel.Replicas); i++ {
-		sentinels = append(sentinels, fmt.Sprintf("%s-%s.%s.svc:26379", setName,
-			strconv.Itoa(i), rc.GetNamespace()))
+		sentinels = append(sentinels, fmt.Sprintf("%s-%s.%s.%s.svc:26379", setName, strconv.Itoa(i),
+			controller.SentinelPeerMemberName(rc.GetName()), rc.GetNamespace()))
 	}
 	return sentinels, nil
 }

@@ -100,7 +100,7 @@ func (rcc *defaultRedisControl) updateReplicaRedisCluster(rc *v1alpha1.RedisClus
 	}
 
 	// if sentienl is enable create sentinel cluster
-	if rc.ShoudEnableSentinel() {
+	if rc.ShoudEnableSentinel() && rc.RedisAllPodsStarted() {
 		if err := rcc.replicaHAMemberManager.Sync(rc); err != nil {
 			return err
 		}

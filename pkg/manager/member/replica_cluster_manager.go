@@ -404,6 +404,7 @@ func (rmm *replicaMemberManager) getNewReplicaStatefulSet(rc *v1alpha1.RedisClus
 
 	instanceName := rc.GetLabels()[label.InstanceLabelKey]
 	rediLabel := label.New().Instance(instanceName).Redis().ReplicaMode()
+	podAnnotations := CombineAnnotations(controller.AnnProm(2379), rc.Spec.Redis.Annotations)
 	storageClassName := rc.Spec.Redis.StorageClassName
 	if storageClassName == "" {
 		storageClassName = controller.DefaultStorageClassName
@@ -434,7 +435,7 @@ func (rmm *replicaMemberManager) getNewReplicaStatefulSet(rc *v1alpha1.RedisClus
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      rediLabel.Labels(),
-					Annotations: controller.AnnProm(2379),
+					Annotations: podAnnotations,
 				},
 				Spec: corev1.PodSpec{
 					SchedulerName: rc.Spec.SchedulerName,
@@ -473,6 +474,10 @@ func (rmm *replicaMemberManager) getNewReplicaStatefulSet(rc *v1alpha1.RedisClus
 								{
 									Name:  "PEER_MASTER_SERVICE_NAME",
 									Value: fmt.Sprintf("%s-master-peer", controller.RedisMemberName(rcName)),
+								},
+								{
+									Name:  "COMPONENT",
+									Value: "redis",
 								},
 							},
 						},
