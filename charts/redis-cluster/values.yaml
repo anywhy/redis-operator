@@ -37,7 +37,7 @@ redis:
   # refer to https://kubernetes.io/docs/concepts/storage/storage-classes
   storageClassName: local-storage
 
-  # Image pull policy.
+  # Image pull policy. IfNotPresent|Always
   imagePullPolicy: IfNotPresent
 
   # redis cluster replication
@@ -69,7 +69,7 @@ redis:
 
 # Replica cluster sentinel
 sentinel:
-  enable: false
+  enable: true
   replicas: 3
   resources:
     # limits:

@@ -21,6 +21,7 @@ type ControlInterface interface {
 type defaultRedisControl struct {
 	rcControl                 controller.RedisClusterControlInterface
 	replicaMemberManager      manager.Manager
+	replicaHAMemberManager    manager.Manager
 	redisClusterMemberManager manager.Manager
 	reclaimPolicyManager      manager.Manager
 	metaManager               manager.Manager
@@ -32,6 +33,7 @@ type defaultRedisControl struct {
 func NewDefaultRedisControl(
 	rcControl controller.RedisClusterControlInterface,
 	replicaMemberManager manager.Manager,
+	replicaHAMemberManager manager.Manager,
 	redisClusterMemberManager manager.Manager,
 	reclaimPolicyManager manager.Manager,
 	metaManager manager.Manager,
@@ -39,6 +41,7 @@ func NewDefaultRedisControl(
 	return &defaultRedisControl{
 		rcControl,
 		replicaMemberManager,
+		replicaHAMemberManager,
 		redisClusterMemberManager,
 		reclaimPolicyManager,
 		metaManager,
@@ -74,7 +77,7 @@ func (rcc *defaultRedisControl) updateRedis(rc *v1alpha1.RedisCluster) error {
 
 	// sync replica cluster, member/service/label
 	if rc.Spec.Mode == v1alpha1.Replica {
-		return rcc.updateReplicaCluster(rc)
+		return rcc.updateReplicaRedisCluster(rc)
 	}
 
 	// sync redis cluster, member/service/label
@@ -82,7 +85,7 @@ func (rcc *defaultRedisControl) updateRedis(rc *v1alpha1.RedisCluster) error {
 }
 
 // update replica cluster
-func (rcc *defaultRedisControl) updateReplicaCluster(rc *v1alpha1.RedisCluster) error {
+func (rcc *defaultRedisControl) updateReplicaRedisCluster(rc *v1alpha1.RedisCluster) error {
 	// works that should do to making the redis replica cluster
 	//  - create or update the master/slave service
 	//  - create or update the master/slave headless service
@@ -94,6 +97,13 @@ func (rcc *defaultRedisControl) updateReplicaCluster(rc *v1alpha1.RedisCluster) 
 	//   - scale out/in the replica cluster
 	if err := rcc.replicaMemberManager.Sync(rc); err != nil {
 		return err
+	}
+
+	// if sentienl is enable create sentinel cluster
+	if rc.ShoudEnableSentinel() && rc.RedisAllPodsStarted() {
+		if err := rcc.replicaHAMemberManager.Sync(rc); err != nil {
+			return err
+		}
 	}
 
 	// syncing the labels from Pod to PVC and PV, these labels include:

@@ -160,8 +160,10 @@ func newFakeRedisControl() (ControlInterface, *meta.FakeReclaimPolicyManager, *m
 	redisClusterMemberManager := mm.NewFakeRedisClusterMemberManager()
 	reclaimPolicyManager := meta.NewFakeReclaimPolicyManager()
 	metaManager := meta.NewFakeMetaManager()
+	repliaHAMemberManager := mm.NewFakeSentinelMemberManager()
 
-	control := NewDefaultRedisControl(rcControl, replicaMemberManager, redisClusterMemberManager, reclaimPolicyManager, metaManager, recorder)
+	control := NewDefaultRedisControl(rcControl, replicaMemberManager, repliaHAMemberManager,
+		redisClusterMemberManager, reclaimPolicyManager, metaManager, recorder)
 
 	return control, reclaimPolicyManager, replicaMemberManager, redisClusterMemberManager, metaManager
 }

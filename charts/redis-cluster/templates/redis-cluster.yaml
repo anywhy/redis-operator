@@ -37,7 +37,6 @@ spec:
   {{- end }}
 {{- if ((eq .Values.redis.mode "replica") and (gt .Values.redis.members 2)) and (eq .Values.sentinel.enable true) }}
   sentinel:
-    enable: {{ .Values.sentinel.enable | default false }}
     replicas: {{ .Values.sentinel.replicas | default 3 }}
   {{- if .Values.sentinel.resources }}
 {{ toYaml .Values.sentinel.resources | indent 4 }}

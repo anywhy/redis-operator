@@ -29,8 +29,6 @@ type replicaMemberManager struct {
 	podControl      controller.PodControlInterface
 	redisScaler     Scaler
 	replicaUpgrader Upgrader
-	autoFailover    bool
-	replicaFailover Failover
 }
 
 // ServiceConfig config to a K8s service
@@ -51,9 +49,7 @@ func NewReplicaMemberManager(
 	podControl controller.PodControlInterface,
 	setLister appslisters.StatefulSetLister,
 	redisScaler Scaler,
-	replicaUpgrader Upgrader,
-	autoFailover bool,
-	replicaFailover Failover) manager.Manager {
+	replicaUpgrader Upgrader) manager.Manager {
 	rmm := &replicaMemberManager{
 		setControl:      setControl,
 		svcControl:      svcControl,
@@ -63,8 +59,6 @@ func NewReplicaMemberManager(
 		setLister:       setLister,
 		redisScaler:     redisScaler,
 		replicaUpgrader: replicaUpgrader,
-		autoFailover:    autoFailover,
-		replicaFailover: replicaFailover,
 	}
 	return rmm
 }
@@ -197,12 +191,6 @@ func (rmm *replicaMemberManager) syncStatefulSetForReplicaRedis(rc *v1alpha1.Red
 	if *newSet.Spec.Replicas < *oldSet.Spec.Replicas {
 		if err := rmm.redisScaler.ScaleIn(rc, newSet, oldSet); err != nil {
 			return err
-		}
-	}
-
-	if rmm.autoFailover {
-		if rc.RedisAllPodsStarted() {
-			// TODO auto failover
 		}
 	}
 
@@ -416,6 +404,7 @@ func (rmm *replicaMemberManager) getNewReplicaStatefulSet(rc *v1alpha1.RedisClus
 
 	instanceName := rc.GetLabels()[label.InstanceLabelKey]
 	rediLabel := label.New().Instance(instanceName).Redis().ReplicaMode()
+	podAnnotations := CombineAnnotations(controller.AnnProm(2379), rc.Spec.Redis.Annotations)
 	storageClassName := rc.Spec.Redis.StorageClassName
 	if storageClassName == "" {
 		storageClassName = controller.DefaultStorageClassName
@@ -446,7 +435,7 @@ func (rmm *replicaMemberManager) getNewReplicaStatefulSet(rc *v1alpha1.RedisClus
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      rediLabel.Labels(),
-					Annotations: controller.AnnProm(2379),
+					Annotations: podAnnotations,
 				},
 				Spec: corev1.PodSpec{
 					SchedulerName: rc.Spec.SchedulerName,
@@ -485,6 +474,10 @@ func (rmm *replicaMemberManager) getNewReplicaStatefulSet(rc *v1alpha1.RedisClus
 								{
 									Name:  "PEER_MASTER_SERVICE_NAME",
 									Value: fmt.Sprintf("%s-master-peer", controller.RedisMemberName(rcName)),
+								},
+								{
+									Name:  "COMPONENT",
+									Value: "redis",
 								},
 							},
 						},

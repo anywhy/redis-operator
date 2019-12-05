@@ -43,16 +43,9 @@ func NewMetaManager(
 }
 
 func (mm *metaManager) Sync(rc *v1alpha1.RedisCluster) error {
-	if rc.Spec.Mode == v1alpha1.Replica {
-		return mm.syncReplicaCluster(rc)
-	}
-	return mm.syncRedisCluster(rc)
-}
-
-func (mm *metaManager) syncReplicaCluster(rc *v1alpha1.RedisCluster) error {
 	ns, labels := rc.GetNamespace(), rc.GetLabels()
 	instanceName := labels[label.InstanceLabelKey]
-	l, err := label.New().Instance(instanceName).ReplicaMode().Selector()
+	l, err := label.New().Instance(instanceName).Redis().Selector()
 	if err != nil {
 		return err
 	}
@@ -61,45 +54,31 @@ func (mm *metaManager) syncReplicaCluster(rc *v1alpha1.RedisCluster) error {
 	if err != nil {
 		return err
 	}
+
 	for _, pod := range pods {
-		updatePod, err := mm.podControl.UpdatePod(rc, pod)
-		if err != nil {
-			return err
-		}
-		if updatePod.Labels[label.ClusterNodeRoleLabelKey] != label.MasterNodeLabelKey &&
-			updatePod.Labels[label.ClusterNodeRoleLabelKey] != label.SlaveNodeLabelKey {
-			continue
-		}
 		// update meta info for pvc
 		pvc, err := mm.resolvePVCFromPod(pod)
 		if err != nil {
 			return err
 		}
-
 		_, err = mm.pvcControl.UpdatePVC(rc, pvc, pod)
 		if err != nil {
 			return err
 		}
 
-		if pvc.Spec.VolumeName == "" {
-			continue
-		}
-
-		// update meta info for pv
-		pv, err := mm.pvLister.Get(pvc.Spec.VolumeName)
-		if err != nil {
-			return err
-		}
-		_, err = mm.pvControl.UpdatePV(rc, pv)
-		if err != nil {
-			return err
+		if pvc.Spec.VolumeName != "" {
+			// update meta info for pv
+			pv, err := mm.pvLister.Get(pvc.Spec.VolumeName)
+			if err != nil {
+				return err
+			}
+			_, err = mm.pvControl.UpdatePV(rc, pv)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
-	return nil
-}
-
-func (mm *metaManager) syncRedisCluster(rc *v1alpha1.RedisCluster) error {
 	return nil
 }
 
