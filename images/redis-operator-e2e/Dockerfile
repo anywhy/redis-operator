@@ -8,7 +8,7 @@ RUN apk update && apk add --no-cache git
 RUN go get github.com/onsi/ginkgo/ginkgo
 
 # Executable image
-FROM alpine:3.5
+FROM alpine:3.10
 
 ENV KUBECTL_VERSION=v1.10.2
 ENV HELM_VERSION=v2.9.1
