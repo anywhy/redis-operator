@@ -5,16 +5,145 @@ import (
 
 	apps "k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	appslisters "k8s.io/client-go/listers/apps/v1beta1"
+	corelisters "k8s.io/client-go/listers/core/v1"
 
 	"github.com/anywhy/redis-operator/pkg/apis/redis/v1alpha1"
 	"github.com/anywhy/redis-operator/pkg/controller"
 	"github.com/anywhy/redis-operator/pkg/label"
-	"github.com/anywhy/redis-operator/pkg/util"
+	"github.com/anywhy/redis-operator/pkg/manager"
 )
 
 type redisClusterMemeberManager struct {
+	setControl      controller.StatefulSetControlInterface
+	svcControl      controller.ServiceControlInterface
+	svcLister       corelisters.ServiceLister
+	setLister       appslisters.StatefulSetLister
+	podLister       corelisters.PodLister
+	podControl      controller.PodControlInterface
+	redisScaler     Scaler
+	clusterUpgrader Upgrader
+}
+
+// NewRedisClusterMemberManager new redis cluster instance manager
+func NewRedisClusterMemberManager(
+	setControl controller.StatefulSetControlInterface,
+	svcControl controller.ServiceControlInterface,
+	svcLister corelisters.ServiceLister,
+	podLister corelisters.PodLister,
+	podControl controller.PodControlInterface,
+	setLister appslisters.StatefulSetLister,
+	redisScaler Scaler,
+	clusterUpgrader Upgrader) manager.Manager {
+	rcm := &redisClusterMemeberManager{
+		setControl:      setControl,
+		svcControl:      svcControl,
+		svcLister:       svcLister,
+		podLister:       podLister,
+		podControl:      podControl,
+		setLister:       setLister,
+		redisScaler:     redisScaler,
+		clusterUpgrader: clusterUpgrader,
+	}
+	return rcm
+}
+
+// Sync	implements redis logic for syncing Redis.
+func (rcm *redisClusterMemeberManager) Sync(rc *v1alpha1.RedisCluster) error {
+	svc := ServiceConfig{
+		Name:     "peer",
+		Port:     6379,
+		SvcLabel: func(l label.Label) label.Label { return l.Sentinel() },
+		MemberName: func(clusterName string) string {
+			return controller.RedisPeerMemberName(clusterName)
+		},
+		Headless: true,
+	}
+	if err := rcm.syncServiceForClusterRedis(rc, svc); err != nil {
+		return err
+	}
+
+	return rcm.syncStatefulSetForClusterRedis(rc)
+}
+
+// sync service
+func (rcm *redisClusterMemeberManager) syncServiceForClusterRedis(rc *v1alpha1.RedisCluster, svc ServiceConfig) error {
+	// create service
+	ns, rcName := rc.GetNamespace(), rc.GetName()
+	newSvc := rcm.getNewClusterServiceForRedis(rc, svc)
+	oldSvcTmp, err := rcm.svcLister.Services(ns).Get(svc.MemberName(rcName))
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			if err := setServiceLastAppliedConfigAnnotation(newSvc); err != nil {
+				return err
+			}
+
+			return rcm.svcControl.CreateService(rc, newSvc)
+		}
+		return err
+	}
+
+	oldSvc := oldSvcTmp.DeepCopy()
+	if ok, err := serviceEqual(newSvc, oldSvc); err != nil {
+		return err
+	} else if !ok {
+		svc := *oldSvc
+		svc.Spec = newSvc.Spec
+		svc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
+		if err = setServiceLastAppliedConfigAnnotation(&svc); err != nil {
+			return err
+		}
+
+		_, err := rcm.svcControl.UpdateService(rc, &svc)
+		return err
+	}
+
+	return nil
+}
+
+func (rcm *redisClusterMemeberManager) syncStatefulSetForClusterRedis(rc *v1alpha1.RedisCluster) error {
+	// TODO implement
+	return nil
+}
+
+func (rcm *redisClusterMemeberManager) getNewClusterServiceForRedis(rc *v1alpha1.RedisCluster, svcConfig ServiceConfig) *corev1.Service {
+	ns, rcName := rc.Namespace, rc.Name
+
+	svcName := svcConfig.MemberName(rcName)
+	instanceName := rc.GetLabels()[label.InstanceLabelKey]
+	rediLabel := svcConfig.SvcLabel(label.New().Instance(instanceName).Redis()).RedisClusterMode().Labels()
+	svc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            svcName,
+			Namespace:       ns,
+			Labels:          rediLabel,
+			OwnerReferences: []metav1.OwnerReference{controller.GetOwnerRef(rc)},
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{
+				{
+					Name:       svcConfig.Name,
+					Port:       svcConfig.Port,
+					TargetPort: intstr.FromInt(int(svcConfig.Port)),
+					Protocol:   corev1.ProtocolTCP,
+				},
+			},
+			Selector:                 rediLabel,
+			PublishNotReadyAddresses: true,
+		},
+	}
+
+	if svcConfig.Headless {
+		svc.Spec.ClusterIP = "None"
+	} else {
+		svc.Spec.Type = controller.GetServiceType(rc.Spec.Services, svcConfig.Name)
+	}
+
+	return svc
 }
 
 func (rcm *redisClusterMemeberManager) getNewRedisClusterStatefulSet(rc *v1alpha1.RedisCluster) (*apps.StatefulSet, error) {
@@ -108,7 +237,7 @@ func (rcm *redisClusterMemeberManager) getNewRedisClusterStatefulSet(rc *v1alpha
 								},
 							},
 							VolumeMounts: volMounts,
-							Resources:    util.ResourceRequirement(rc.Spec.Redis.ContainerSpec),
+							Resources:    resourceRequirement(rc.Spec.Redis.ContainerSpec),
 							Env: []corev1.EnvVar{
 								{
 									Name: "NAMESPACE",
@@ -121,6 +250,10 @@ func (rcm *redisClusterMemeberManager) getNewRedisClusterStatefulSet(rc *v1alpha
 								{
 									Name:  "CLUSTER_NAME",
 									Value: rc.GetName(),
+								},
+								{
+									Name:  "COMPONENT",
+									Value: "redis",
 								},
 							},
 						},

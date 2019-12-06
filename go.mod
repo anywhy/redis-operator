@@ -32,6 +32,7 @@ require (
 	k8s.io/client-go v0.0.0-20190115164855-701b91367003
 	k8s.io/kube-openapi v0.0.0-20190918143330-0270cf2f1c1d // indirect
 	k8s.io/kubernetes v1.12.5
+	k8s.io/utils v0.0.0-20191114200735-6ca3b61696b6
 )
 
 go 1.13

@@ -81,7 +81,14 @@ func (rcc *defaultRedisControl) updateRedis(rc *v1alpha1.RedisCluster) error {
 	}
 
 	// sync redis cluster, member/service/label
-	return rcc.updateRedisCluster(rc)
+	if err := rcc.updateRedisCluster(rc); err != nil {
+		return nil
+	}
+
+	// syncing the labels from Pod to PVC and PV, these labels include:
+	//   - label.ComponentLabelKey
+	//   - label.NamespaceLabelKey
+	return rcc.metaManager.Sync(rc)
 }
 
 // update replica cluster
@@ -106,10 +113,7 @@ func (rcc *defaultRedisControl) updateReplicaRedisCluster(rc *v1alpha1.RedisClus
 		}
 	}
 
-	// syncing the labels from Pod to PVC and PV, these labels include:
-	//   - label.ComponentLabelKey
-	//   - label.NamespaceLabelKey
-	return rcc.metaManager.Sync(rc)
+	return nil
 }
 
 // update redis cluster

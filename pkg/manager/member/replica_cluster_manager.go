@@ -17,7 +17,6 @@ import (
 	"github.com/anywhy/redis-operator/pkg/controller"
 	"github.com/anywhy/redis-operator/pkg/label"
 	"github.com/anywhy/redis-operator/pkg/manager"
-	"github.com/anywhy/redis-operator/pkg/util"
 )
 
 type replicaMemberManager struct {
@@ -111,7 +110,7 @@ func (rmm *replicaMemberManager) Sync(rc *v1alpha1.RedisCluster) error {
 func (rmm *replicaMemberManager) syncServiceForReplicaRedis(rc *v1alpha1.RedisCluster, svc ServiceConfig) error {
 	// create service
 	ns, rcName := rc.GetNamespace(), rc.GetName()
-	newSvc := rmm.getNewRedisServiceForRedis(rc, svc)
+	newSvc := rmm.getNewReplicaServiceForRedis(rc, svc)
 	oldSvcTmp, err := rmm.svcLister.Services(ns).Get(svc.MemberName(rcName))
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -250,7 +249,7 @@ func (rmm *replicaMemberManager) setRoleLabelsForCluster(rc *v1alpha1.RedisClust
 	return nil
 }
 
-func (rmm *replicaMemberManager) getNewRedisServiceForRedis(rc *v1alpha1.RedisCluster, svcConfig ServiceConfig) *corev1.Service {
+func (rmm *replicaMemberManager) getNewReplicaServiceForRedis(rc *v1alpha1.RedisCluster, svcConfig ServiceConfig) *corev1.Service {
 	ns, rcName := rc.Namespace, rc.Name
 
 	svcName := svcConfig.MemberName(rcName)
@@ -457,7 +456,7 @@ func (rmm *replicaMemberManager) getNewReplicaStatefulSet(rc *v1alpha1.RedisClus
 								},
 							},
 							VolumeMounts: volMounts,
-							Resources:    util.ResourceRequirement(rc.Spec.Redis.ContainerSpec),
+							Resources:    resourceRequirement(rc.Spec.Redis.ContainerSpec),
 							Env: []corev1.EnvVar{
 								{
 									Name: "NAMESPACE",

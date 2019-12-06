@@ -140,7 +140,7 @@ func TestRedisStatusEquality(t *testing.T) {
 	rcStatus := v1alpha1.RedisClusterStatus{}
 
 	rcStatusCopy := rcStatus.DeepCopy()
-	rcStatusCopy.Redis = v1alpha1.ServerStatus{}
+	rcStatusCopy.Redis = v1alpha1.RedisStatus{}
 	rcStatusCopy.Sentinel = v1alpha1.SentinelStatus{}
 	g.Expect(apiequality.Semantic.DeepEqual(&rcStatus, rcStatusCopy)).To(Equal(true))
 
@@ -181,7 +181,7 @@ func newRedisForRedisControl() *v1alpha1.RedisCluster {
 		},
 		Spec: v1alpha1.RedisClusterSpec{
 			Mode: "replica",
-			Redis: v1alpha1.ServerSpec{
+			Redis: v1alpha1.RedisSpec{
 				Replicas: 2,
 			},
 		},

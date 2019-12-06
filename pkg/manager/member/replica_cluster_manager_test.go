@@ -224,7 +224,7 @@ func newRedisForReplica() *v1alpha1.RedisCluster {
 		},
 		Spec: v1alpha1.RedisClusterSpec{
 			Mode: "replica",
-			Redis: v1alpha1.ServerSpec{
+			Redis: v1alpha1.RedisSpec{
 				ContainerSpec: v1alpha1.ContainerSpec{
 					Image: "test-image",
 					Requests: &v1alpha1.ResourceRequirement{

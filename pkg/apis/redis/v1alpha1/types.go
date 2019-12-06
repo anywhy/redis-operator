@@ -68,7 +68,7 @@ type RedisClusterSpec struct {
 	Mode          ClusterMode `json:"mode"`
 	SchedulerName string      `json:"schedulerName,omitempty"`
 
-	Redis    ServerSpec   `json:"redis"`
+	Redis    RedisSpec    `json:"redis"`
 	Sentinel SentinelSpec `json:"sentinel,omitempty"`
 
 	// Services list non-headless services type used in Redis
@@ -76,8 +76,8 @@ type RedisClusterSpec struct {
 	PVReclaimPolicy corev1.PersistentVolumeReclaimPolicy `json:"pvReclaimPolicy,omitempty"`
 }
 
-// ServerSpec redis instance attributes
-type ServerSpec struct {
+// RedisSpec redis instance attributes
+type RedisSpec struct {
 	ContainerSpec
 
 	PodAttributesSpec
@@ -102,7 +102,7 @@ type SentinelSpec struct {
 
 // RedisClusterStatus represents the current status of a redis cluster.
 type RedisClusterStatus struct {
-	Redis    ServerStatus   `json:"redis,omitempty"`
+	Redis    RedisStatus    `json:"redis,omitempty"`
 	Sentinel SentinelStatus `json:"sentinel,omitempty"`
 }
 
@@ -132,10 +132,10 @@ type Service struct {
 
 // RedisMember redis server
 type RedisMember struct {
-	Name   string `json:"name"`
-	ID     string `json:"id"`
-	Role   string `json:"role"`
-	Health bool   `json:"health"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Role string `json:"role"`
+
 	// Last time the health transitioned from one to another.
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 }
@@ -151,8 +151,8 @@ type PodAttributesSpec struct {
 	PriorityClassName  string                     `json:"priorityClassName,omitempty"`
 }
 
-// ServerStatus is cluster status
-type ServerStatus struct {
+// RedisStatus is cluster status
+type RedisStatus struct {
 	Phase          MemberPhase                   `json:"phase,omitempty"`
 	StatefulSet    *apps.StatefulSetStatus       `json:"statefulset,omitempty"`
 	Members        map[string]RedisMember        `json:"members,omitempty"`

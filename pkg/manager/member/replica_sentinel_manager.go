@@ -19,7 +19,6 @@ import (
 	"github.com/anywhy/redis-operator/pkg/controller"
 	"github.com/anywhy/redis-operator/pkg/label"
 	"github.com/anywhy/redis-operator/pkg/manager"
-	"github.com/anywhy/redis-operator/pkg/util"
 	"github.com/anywhy/redis-operator/pkg/util/redis"
 )
 
@@ -53,7 +52,7 @@ func NewSentinelMemberManager(
 // Sync	implements sentinel logic for syncing Redis.
 func (smm *sentinelMemberManager) Sync(rc *v1alpha1.RedisCluster) error {
 	if rc.Spec.Mode == v1alpha1.Replica && rc.ShoudEnableSentinel() {
-		if err := smm.syncSentinelService(rc, ServiceConfig{
+		svc := ServiceConfig{
 			Name:     "peer",
 			Port:     26379,
 			SvcLabel: func(l label.Label) label.Label { return l.Sentinel() },
@@ -61,7 +60,9 @@ func (smm *sentinelMemberManager) Sync(rc *v1alpha1.RedisCluster) error {
 				return controller.SentinelPeerMemberName(clusterName)
 			},
 			Headless: true,
-		}); err != nil {
+		}
+
+		if err := smm.syncSentinelService(rc, svc); err != nil {
 			return err
 		}
 
@@ -399,7 +400,7 @@ func (smm *sentinelMemberManager) getNewSentinelStatefulSet(rc *v1alpha1.RedisCl
 								},
 							},
 							VolumeMounts: volMounts,
-							Resources: util.ResourceRequirement(v1alpha1.ContainerSpec{
+							Resources: resourceRequirement(v1alpha1.ContainerSpec{
 								Requests: rc.Spec.Sentinel.Requests,
 								Limits:   rc.Spec.Sentinel.Limits,
 							}),
